@@ -1,9 +1,16 @@
 name: Build
 
+# Pushes to other branches aren't built on their own: their PR's run covers the same commit.
 on:
   push:
+    branches: [master]
   pull_request:
   workflow_dispatch:
+
+# A newer push to the same branch or PR makes the older run pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -30,12 +37,15 @@ jobs:
         if: runner.os != 'Linux'
         run: npm test
 
+      # Installers are only needed for releases, so PRs just test.
       - name: Build installer
+        if: github.event_name != 'pull_request'
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false # no code signing (out of scope)
 
       - uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           name: freewriter-${{ runner.os }}
           path: |
@@ -43,9 +53,11 @@ jobs:
             dist/*.dmg
             dist/*.AppImage
           if-no-files-found: error
+          retention-days: 7 # a release keeps its own copy
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: test-results-${{ runner.os }}
           path: test-results/
+          retention-days: 7
