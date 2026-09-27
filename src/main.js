@@ -45,6 +45,7 @@ function createWindow() {
     width: 1000,
     height: 750,
     show: false,
+    icon: path.join(__dirname, 'icon.png'),
     autoHideMenuBar: true,
     backgroundColor: BACKGROUNDS[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'],
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
