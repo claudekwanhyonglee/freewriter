@@ -5,6 +5,7 @@
   --line: rgba(0, 0, 0, 0.07);
   --line-strong: rgba(0, 0, 0, 0.15);
   --font-size: 22px;
+  --controls-opacity: 0.65;
   color-scheme: light;
 }
 
@@ -41,7 +42,27 @@ html, body {
   position: relative; /* the search glow scrolls with the text */
   height: 100%;
   overflow-y: auto;
+  /* Room for the bar on both sides from the start, so the column stays centred and never shifts. */
+  scrollbar-gutter: stable both-edges;
+  /* Fades with the controls. The thumb can't transition itself, but repaints as this interpolates. */
+  transition: --scrollbar-thumb 0.4s;
 }
+
+@property --scrollbar-thumb {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: transparent;
+}
+
+body:has(#controls.shown) #page {
+  --scrollbar-thumb: rgb(from var(--text) r g b / var(--controls-opacity));
+  transition-duration: 0.15s;
+}
+
+#page::-webkit-scrollbar { width: 10px; }
+#page::-webkit-scrollbar-track { background: transparent; }
+#page::-webkit-scrollbar-button { display: none; }
+#page::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 5px; }
 
 #page > .milkdown {
   min-height: 100%;
@@ -301,7 +322,7 @@ html, body {
 /* While the sidebar is open the menu stays, whatever the mouse or keyboard does. */
 #controls.shown,
 body:has(#sidebar:not([hidden])) #controls {
-  opacity: 0.65;
+  opacity: var(--controls-opacity);
   visibility: visible;
   transition: opacity 0.15s, visibility 0s;
 }

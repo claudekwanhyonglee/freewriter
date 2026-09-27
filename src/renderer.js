@@ -248,7 +248,11 @@ function onRealMouseMove(handler) {
   });
 }
 
-function showControlsOnMouseMove() {
+/**
+ * The controls, and the scrollbar with them (style.css), show while the mouse moves or scrolls.
+ * A wheel, not `scroll`: typing scrolls the page too, to keep the caret in view.
+ */
+function showControlsOnMouseActivity() {
   let fadeTimer;
   const hide = () => {
     clearTimeout(fadeTimer);
@@ -257,11 +261,13 @@ function showControlsOnMouseMove() {
   };
   // A pointer resting on the controls keeps them; moving off them fires mousemove and restarts the fade.
   const fadeUnlessHovered = () => { if (!controls.matches(':hover')) hide(); };
-  onRealMouseMove(() => {
+  const show = () => {
     controls.classList.add('shown');
     clearTimeout(fadeTimer);
     fadeTimer = setTimeout(fadeUnlessHovered, CONTROLS_LINGER_MS);
-  });
+  };
+  onRealMouseMove(show);
+  document.addEventListener('wheel', show, { passive: true });
   editorElement.addEventListener('keydown', hide);
 }
 
@@ -279,6 +285,6 @@ zoomWithModifierWheel();
 setUpControls();
 closeSidebarOnWritingAreaClick();
 searchBox.addEventListener('input', showSessions);
-showControlsOnMouseMove();
+showControlsOnMouseActivity();
 hideCursorWhileTyping();
 focusEditor();
