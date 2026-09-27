@@ -7,21 +7,39 @@
   "author": "claudekwanhyonglee",
   "private": true,
   "scripts": {
+    "build": "esbuild src/renderer.js --bundle --format=esm --target=chrome120 --outfile=src/renderer.bundle.js",
+    "prestart": "npm run build",
     "start": "electron .",
+    "pretest": "npm run build",
     "test": "playwright test --grep-invert @dist",
+    "pretest:dist": "npm run build",
     "test:dist": "playwright test --grep @dist",
+    "predist": "npm run build",
     "dist": "electron-builder --publish never"
   },
   "build": {
     "appId": "com.claudekwanhyonglee.freewriter",
-    "files": ["src/**/*", "package.json"],
-    "win": { "target": "nsis" },
-    "mac": { "target": "dmg", "category": "public.app-category.productivity" },
-    "linux": { "target": "AppImage", "category": "Office" }
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
+    }
   },
   "devDependencies": {
+    "@milkdown/kit": "^7.22.2",
     "@playwright/test": "^1.63.0",
     "electron": "^44.4.5",
-    "electron-builder": "^26.15.3"
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2"
   }
 }

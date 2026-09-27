@@ -2,12 +2,18 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('freewriter', {
   platform: process.platform,
-  textChanged: (text) => ipcRenderer.send('text-changed', text),
+  // Synchronous, so text sent while the window closes arrives before the app quits.
+  textChanged: (text) => ipcRenderer.sendSync('text-changed', text),
   listSessions: () => ipcRenderer.invoke('list-sessions'),
   openSession: (name) => ipcRenderer.invoke('open-session', name),
   newSession: () => ipcRenderer.invoke('new-session'),
-  // Read synchronously so the first paint already uses the saved size.
-  savedFontSize: ipcRenderer.sendSync('get-font-size'),
-  saveFontSize: (size) => ipcRenderer.send('set-font-size', size),
+  deleteSession: (name) => ipcRenderer.invoke('delete-session', name),
+  // Read synchronously so the first paint already uses the saved size and font.
+  savedFontSize: ipcRenderer.sendSync('get-setting', 'fontSize'),
+  saveFontSize: (size) => ipcRenderer.send('set-setting', 'fontSize', size),
+  savedFont: ipcRenderer.sendSync('get-setting', 'font'),
+  saveFont: (font) => ipcRenderer.send('set-setting', 'font', font),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  openLink: (url) => ipcRenderer.send('open-link', url),
+  sessionsDirUrl: ipcRenderer.sendSync('get-sessions-dir-url'),
 });

@@ -54,7 +54,18 @@ function sessionLabel(name) {
   return m ? `${m[1]} ${m[2]}:${m[3]}` : name.replace(/\.md$/, '');
 }
 
-const firstLine = (text) => text.split('\n').map((line) => line.trim()).find(Boolean) ?? '';
+// ponytail: regexes cover the common markdown set the editor writes; a real parser only if previews look wrong.
+/** A line of markdown as the plain text a reader sees. */
+const plainText = (line) => line
+  .replace(/^(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+|```\w*|(-{3,}|\*{3,}|_{3,})$)+/, '')
+  .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+  .replace(/(\*\*|~~|\*|`)(?=\S)(.*?\S)\1/g, '$2')
+  .replace(/<br\s*\/?>|&#x20;/g, ' ')
+  .replace(/\\([\\`*_{}[\]()#+\-.!~|<>])/g, '$1')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+const firstLine = (text) => text.split('\n').map(plainText).find(Boolean) ?? '';
 
 // ponytail: reads every file on each open; fine for years of daily sessions, cache first lines if it ever lags.
 function listSessions(dir) {

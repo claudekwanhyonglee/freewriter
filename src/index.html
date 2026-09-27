@@ -2,12 +2,13 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; img-src 'self' file: https: http: data:">
   <title>Freewriter</title>
+  <link rel="stylesheet" href="fonts.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <textarea id="editor" spellcheck="false" autofocus aria-label="Write"></textarea>
+  <main id="page"></main>
   <nav id="controls" aria-label="Controls">
     <button data-action="toggleSidebar" data-shortcut="O" aria-label="Sessions">
       <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -21,13 +22,15 @@
     <button data-action="textBigger" data-shortcut="=" aria-label="Text bigger">
       <svg viewBox="0 0 24 24"><path d="M3 18l4.5-10L12 18M4.6 14.5h5.8M15 13h6M18 10v6"/></svg>
     </button>
-    <button data-action="toggleFullscreen" data-key="F11" aria-label="Fullscreen">
+    <button data-action="toggleFontList" aria-label="Font" aria-haspopup="listbox" aria-expanded="false" class="font-button">Aa</button>
+    <button data-action="toggleFullscreen" data-key="F11" data-mac-key="⌃⌘F" aria-label="Fullscreen">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
     </button>
+    <ul id="font-list" role="listbox" aria-label="Font" hidden></ul>
   </nav>
   <aside id="sidebar" hidden aria-label="Sessions">
     <ul id="session-list"></ul>
   </aside>
-  <script src="renderer.js"></script>
+  <script type="module" src="renderer.bundle.js"></script>
 </body>
 </html>

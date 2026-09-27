@@ -23,9 +23,9 @@ test('#2 AC1: window shows within 2 s with a focused, empty editor that accepts 
   expect(Date.now() - started).toBeLessThan(2000);
 
   await expect(page.locator('#editor')).toBeFocused();
-  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toHaveText('');
   await page.keyboard.type('hello');
-  await expect(page.locator('#editor')).toHaveValue('hello');
+  await expect(page.locator('#editor')).toHaveText('hello');
   await app.close();
 });
 
@@ -36,7 +36,7 @@ test('#2 AC2: no menu bar, toolbar or status bar is visible', async ({ app, page
   }
   const visibleOtherThanEditor = await page.evaluate(() =>
     [...document.body.querySelectorAll('*')].filter((el) =>
-      el.id !== 'editor' && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && el.getClientRects().length > 0
+      !el.closest('#page') && el.checkVisibility({ opacityProperty: true, visibilityProperty: true }) && el.getClientRects().length > 0
     ).length
   );
   expect(visibleOtherThanEditor).toBe(0);

@@ -1,12 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { test, expect, launch, mod, tempDir } = require('./fixture');
+const { test, expect, launch, mod, seed, tempDir } = require('./fixture');
 
 const mdFiles = (dir) => fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort();
-
-function seed(dir, sessions) {
-  for (const [name, text] of Object.entries(sessions)) fs.writeFileSync(path.join(dir, name), text);
-}
 
 test('#4 AC1: Ctrl/Cmd+O toggles the sidebar, which is hidden on launch', async ({ page }) => {
   const sidebar = page.locator('#sidebar');
@@ -53,7 +49,7 @@ test('#4 AC3: clicking a session loads it and further edits save to the same fil
 
   await page.keyboard.press(`${mod}+o`);
   await page.locator('#sidebar li').first().click();
-  await expect(page.locator('#editor')).toHaveValue('An old session');
+  await expect(page.locator('#editor')).toHaveText('An old session');
   await expect(page.locator('#editor')).toBeFocused();
 
   await page.keyboard.press('End');
@@ -69,7 +65,7 @@ test('#4 AC4: Ctrl/Cmd+N starts a blank session and leaves the previous file int
   const { app, page } = await launch({ dir, userData: tempDir('fw-') });
   await page.keyboard.type('First session');
   await page.keyboard.press(`${mod}+n`);
-  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toHaveText('');
   await expect(page.locator('#editor')).toBeFocused();
 
   const [first] = mdFiles(dir);
@@ -83,4 +79,99 @@ test('#4 AC4: Ctrl/Cmd+N starts a blank session and leaves the previous file int
   expect(fs.readFileSync(path.join(dir, first), 'utf8')).toBe('First session');
   const second = files.find((f) => f !== first);
   expect(fs.readFileSync(path.join(dir, second), 'utf8')).toBe('Second session');
+});
+
+// --- #12 Delete sessions ---------------------------------------------------------
+
+const SESSIONS = {
+  '2025-01-01 08-00-00.md': 'Oldest',
+  '2025-01-02 08-00-00.md': 'Middle',
+  '2025-01-03 08-00-00.md': 'Newest',
+};
+
+/**
+ * Stands in for the OS trash, which CI runners may not have: the app still calls shell.trashItem,
+ * and the file is moved to `trash`.
+ */
+async function fakeOsTrash(app, trash) {
+  await app.evaluate(({ shell }, trash) => {
+    const fs = process.mainModule.require('fs');
+    const path = process.mainModule.require('path');
+    shell.trashItem = async (file) => fs.renameSync(file, path.join(trash, path.basename(file)));
+  }, trash);
+}
+
+async function launchWithSessions() {
+  const dir = tempDir('fw-');
+  const trash = tempDir('fw-trash-');
+  seed(dir, SESSIONS);
+  const { app, page } = await launch({ dir, userData: tempDir('fw-') });
+  await fakeOsTrash(app, trash);
+  await page.keyboard.press(`${mod}+o`);
+  return { app, page, dir, trash };
+}
+
+const row = (page, text) => page.locator('#sidebar li').filter({ hasText: text });
+const trashButton = (page, text) => row(page, text).getByRole('button', { name: 'Move to Trash' });
+
+test('#12 AC1: hovering a session row reveals its trash button', async () => {
+  const { app, page } = await launchWithSessions();
+  await page.mouse.move(5, 300); // away from the sidebar on the right
+  await expect(trashButton(page, 'Middle')).toBeHidden();
+  await row(page, 'Middle').hover();
+  await expect(trashButton(page, 'Middle')).toBeVisible();
+  await expect(trashButton(page, 'Newest')).toBeHidden();
+  await app.close();
+});
+
+test('#12 AC2: clicking it moves the file to the trash without asking and removes the row', async () => {
+  const { app, page, dir, trash } = await launchWithSessions();
+  const dialogs = [];
+  page.on('dialog', (dialog) => dialogs.push(dialog));
+  await row(page, 'Middle').hover();
+  await trashButton(page, 'Middle').click();
+
+  await expect(row(page, 'Middle')).toHaveCount(0);
+  await expect(page.locator('#sidebar li')).toHaveCount(2);
+  expect(fs.readdirSync(trash)).toEqual(['2025-01-02 08-00-00.md']);
+  expect(fs.readFileSync(path.join(trash, '2025-01-02 08-00-00.md'), 'utf8')).toBe('Middle');
+  expect(dialogs).toEqual([]);
+  expect(app.windows()).toHaveLength(1);
+  await app.close();
+  expect(mdFiles(dir)).not.toContain('2025-01-02 08-00-00.md');
+});
+
+test('#12 AC3: deleting the open session switches to a new blank session', async () => {
+  const { app, page, dir, trash } = await launchWithSessions();
+  await row(page, 'Middle').click();
+  await page.keyboard.type(' and more');
+  await page.keyboard.press(`${mod}+o`);
+  await row(page, 'Middle and more').hover();
+  await trashButton(page, 'Middle and more').click();
+
+  await expect(page.locator('#editor')).toHaveText('');
+  await expect(page.locator('#editor')).toBeFocused();
+  expect(fs.readFileSync(path.join(trash, '2025-01-02 08-00-00.md'), 'utf8')).toBe('Middle and more'); // nothing lost
+  await page.keyboard.type('Fresh start');
+  await app.close();
+
+  const files = mdFiles(dir);
+  expect(files).toHaveLength(3);
+  expect(files).not.toContain('2025-01-02 08-00-00.md'); // not written back after trashing
+  const fresh = files.find((f) => !(f in SESSIONS));
+  expect(fs.readFileSync(path.join(dir, fresh), 'utf8')).toBe('Fresh start');
+});
+
+test('#12 AC4: other session files are left untouched', async () => {
+  const { app, page, dir } = await launchWithSessions();
+  const before = Object.fromEntries(['2025-01-01 08-00-00.md', '2025-01-03 08-00-00.md'].map((f) => [f, fs.statSync(path.join(dir, f)).mtimeMs]));
+  await row(page, 'Middle').hover();
+  await trashButton(page, 'Middle').click();
+  await expect(row(page, 'Middle')).toHaveCount(0);
+  await app.close();
+
+  for (const [name, mtime] of Object.entries(before)) {
+    expect(fs.readFileSync(path.join(dir, name), 'utf8')).toBe(SESSIONS[name]);
+    expect(fs.statSync(path.join(dir, name)).mtimeMs).toBe(mtime);
+  }
 });

@@ -3,6 +3,7 @@
   --text: #3a3a3a;
   --panel: #efe9dc;
   --line: rgba(0, 0, 0, 0.07);
+  --line-strong: rgba(0, 0, 0, 0.15);
   --font-size: 22px;
   color-scheme: light dark;
 }
@@ -13,6 +14,7 @@
     --text: #cfcfcf;
     --panel: #252525;
     --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.15);
   }
 }
 
@@ -23,29 +25,132 @@ html, body {
   overflow: hidden;
 }
 
+/* The page scrolls, not the editor, so ProseMirror can keep the caret in view. */
+#page {
+  height: 100%;
+  overflow-y: auto;
+}
+
+#page > .milkdown {
+  min-height: 100%;
+  display: flex; /* stretches the editor, so a click anywhere below the text lands in it */
+}
+
 #editor {
   display: block;
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
   /* Padding centres a column of at most 65ch at any window width. */
   padding: 12vh max(1.5rem, calc((100% - 65ch) / 2));
   border: 0;
   outline: none;
-  resize: none;
   background: transparent;
   color: var(--text);
   caret-color: var(--text);
-  font: var(--font-size)/1.6 Charter, "Bitstream Charter", "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif;
+  font: var(--font-size)/1.6 var(--prose-font, "Literata"), Georgia, serif;
+  /* What prosemirror-view/style/prosemirror.css asks for. */
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* A floated, zero-height placeholder leaves the caret at the start of the line. */
+#editor.empty > p:first-child::before {
+  content: "Today I ...";
+  float: left;
+  height: 0;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* --- Formatting: modest and quiet ------------------------------------------- */
+
+#editor > :first-child { margin-top: 0; }
+#editor p { margin: 0 0 0.6em; }
+#editor h1, #editor h2, #editor h3 { margin: 1.2em 0 0.4em; line-height: 1.3; font-weight: 600; }
+#editor h1 { font-size: 1.4em; }
+#editor h2 { font-size: 1.2em; }
+#editor h3 { font-size: 1.05em; }
+#editor ul, #editor ol { margin: 0 0 0.6em; padding-left: 1.4em; }
+#editor li > p { margin: 0; }
+#editor li.task { list-style: none; display: flex; gap: 0.5em; margin-left: -1.4em; }
+#editor li.task > input { margin: 0.45em 0 0; cursor: pointer; accent-color: var(--text); }
+#editor li.task > div { flex: 1; min-width: 0; }
+#editor blockquote { margin: 0 0 0.6em; padding-left: 1em; border-left: 2px solid var(--line-strong); opacity: 0.85; }
+#editor hr { border: 0; border-top: 1px solid var(--line-strong); margin: 1.2em 0; }
+#editor code, #editor pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 0.85em; }
+#editor code { padding: 0.1em 0.3em; border-radius: 3px; background: var(--line); }
+#editor pre { margin: 0 0 0.6em; padding: 0.7em 1em; border-radius: 4px; background: var(--line); white-space: pre-wrap; }
+#editor pre code { padding: 0; background: none; font-size: 1em; }
+#editor a { color: inherit; text-decoration-color: var(--line-strong); text-underline-offset: 0.15em; }
+#editor img { max-width: 100%; }
+#editor table { border-collapse: collapse; margin: 0 0 0.6em; }
+#editor th, #editor td { border: 1px solid var(--line-strong); padding: 0.2em 0.6em; vertical-align: top; min-width: 3em; }
+#editor th { font-weight: 600; text-align: left; }
+#editor th > p, #editor td > p { margin: 0; }
+#editor .selectedCell { background: var(--line); }
+
+#slash-menu {
+  position: fixed;
+  z-index: 2;
+  margin: 0;
+  padding: 0.3rem 0;
+  min-width: 11rem;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  font: 14px/1.4 system-ui, sans-serif;
+}
+
+#slash-menu[hidden] {
+  display: none;
+}
+
+#slash-menu li {
+  padding: 0.3rem 0.9rem;
+  cursor: pointer;
+}
+
+#slash-menu li[aria-selected="true"],
+#slash-menu li:hover {
+  background: var(--line);
+}
+
+.table-handle {
+  position: fixed;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  opacity: 0.6;
+  font: 14px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.table-handle:hover {
+  opacity: 1;
+  background: var(--panel);
+}
+
+.table-handle[hidden] {
+  display: none;
 }
 
 #sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0 0 0 auto;
   width: min(22rem, 85vw);
   overflow-y: auto;
   background: var(--panel);
-  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   font: 15px/1.4 system-ui, sans-serif;
 }
 
@@ -56,25 +161,67 @@ html, body {
 #session-list {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 0;
+  padding: 3.25rem 0 0.5rem; /* clear of the controls above it */
+}
+
+#session-list li {
+  position: relative;
 }
 
 #session-list button {
-  display: block;
-  width: 100%;
-  padding: 0.6rem 1.25rem;
   border: 0;
   background: none;
   color: var(--text);
   font: inherit;
-  text-align: left;
   cursor: pointer;
 }
 
-#session-list button:hover,
-#session-list button:focus-visible {
+#session-list .open {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 3rem 0.6rem 1.25rem; /* room for the trash button on the right */
+  text-align: left;
+}
+
+#session-list li:hover .open,
+#session-list .open:focus-visible {
   background: var(--line);
   outline: none;
+}
+
+#session-list .trash {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 6px;
+  opacity: 0.6;
+  visibility: hidden;
+}
+
+#session-list li:hover .trash,
+#session-list .trash:focus-visible {
+  visibility: visible;
+}
+
+#session-list .trash:hover {
+  opacity: 1;
+  background: var(--line);
+}
+
+#session-list .trash svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 #session-list .date {
@@ -94,6 +241,7 @@ html, body {
   position: fixed;
   top: 0.75rem;
   right: 0.75rem;
+  z-index: 1; /* above the sidebar, which opens on the same side */
   display: flex;
   gap: 0.25rem;
   opacity: 0;
@@ -102,13 +250,13 @@ html, body {
 }
 
 #controls.shown {
-  opacity: 0.35;
+  opacity: 0.65;
   visibility: visible;
   transition: opacity 0.15s, visibility 0s;
 }
 
 #controls.shown:hover {
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 #controls button {
@@ -136,6 +284,39 @@ html, body {
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+#controls .font-button {
+  font: 15px/1 "Literata", Georgia, serif;
+}
+
+#font-list {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  margin: 0;
+  padding: 0.3rem 0;
+  min-width: 13rem;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  font-size: 16px;
+}
+
+#font-list[hidden] {
+  display: none;
+}
+
+#font-list li {
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+}
+
+#font-list li:hover {
+  background: var(--line);
 }
 
 body.typing, body.typing * {
