@@ -27,9 +27,10 @@ test('#3 AC1: first non-whitespace character creates a file named with local cre
   expect(localTimeOf(name)).toBeLessThanOrEqual(after);
 });
 
+// Since #14 the file holds the editor's content as markdown: Enter starts a new paragraph.
 test('#3 AC2: file holds exactly the editor text within 1 s of the last keystroke', async ({ page, dir }) => {
-  const text = 'First line\n\n  indented, with ünïcode ✓ ';
-  await page.keyboard.type(text);
+  await page.keyboard.type('First line\nwith ünïcode ✓');
+  const text = 'First line\n\nwith ünïcode ✓';
   await expect.poll(() => mdFiles(dir).length).toBe(1);
   const file = path.join(dir, mdFiles(dir)[0]);
   await expect.poll(() => fs.readFileSync(file, 'utf8'), { timeout: 1000 }).toBe(text);

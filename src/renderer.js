@@ -1,6 +1,7 @@
+import { createEditor } from './editor.js';
+
 const api = window.freewriter;
 const isMac = api.platform === 'darwin';
-const editor = document.getElementById('editor');
 const sidebar = document.getElementById('sidebar');
 const sessionList = document.getElementById('session-list');
 const controls = document.getElementById('controls');
@@ -10,16 +11,17 @@ const CONTROLS_LINGER_MS = 2000;
 
 // --- Editor -----------------------------------------------------------------
 
-function autosave() {
-  editor.addEventListener('input', () => api.textChanged(editor.value));
-}
+// Relative image paths in a session resolve against the sessions folder, where the session file lives.
+const base = Object.assign(document.createElement('base'), { href: api.sessionsDirUrl });
+document.head.append(base);
 
-function showInEditor(text) {
-  editor.value = text;
-  editor.setSelectionRange(text.length, text.length);
-  editor.scrollTop = editor.scrollHeight;
-  editor.focus();
-}
+const editor = await createEditor(document.getElementById('page'), { onChange: api.textChanged, openLink: api.openLink, isMac });
+const editorElement = editor.view.dom;
+const focusEditor = () => editor.view.focus();
+const showInEditor = (text) => editor.load(text);
+// The main process must hold the latest text before it lists, switches or closes sessions.
+const saveNow = editor.flush;
+window.addEventListener('beforeunload', saveNow);
 
 // --- Sessions ---------------------------------------------------------------
 
@@ -42,21 +44,24 @@ function sessionItem({ name, label, firstLine }) {
 async function toggleSidebar() {
   if (!sidebar.hidden) {
     sidebar.hidden = true;
-    editor.focus();
+    focusEditor();
     return;
   }
+  saveNow();
   const sessions = await api.listSessions();
   sessionList.replaceChildren(...sessions.map(sessionItem));
   sidebar.hidden = false;
 }
 
 async function openSession(name) {
+  saveNow();
   const text = await api.openSession(name);
   sidebar.hidden = true;
   showInEditor(text);
 }
 
 async function newSession() {
+  saveNow();
   await api.newSession();
   sidebar.hidden = true;
   showInEditor('');
@@ -134,18 +139,17 @@ function showControlsOnMouseMove() {
     clearTimeout(fadeTimer);
     fadeTimer = setTimeout(fadeUnlessHovered, CONTROLS_LINGER_MS);
   });
-  editor.addEventListener('keydown', hide);
+  editorElement.addEventListener('keydown', hide);
 }
 
 function hideCursorWhileTyping() {
-  editor.addEventListener('keydown', () => document.body.classList.add('typing'));
+  editorElement.addEventListener('keydown', () => document.body.classList.add('typing'));
   onRealMouseMove(() => document.body.classList.remove('typing'));
 }
 
 setTextSize(textSize, { save: false });
-autosave();
 handleShortcuts();
 setUpControls();
 showControlsOnMouseMove();
 hideCursorWhileTyping();
-editor.focus();
+focusEditor();

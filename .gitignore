@@ -1,5 +1,6 @@
 .claude/worktrees/
 node_modules/
+src/renderer.bundle.js
 dist/
 test-results/
 playwright-report/

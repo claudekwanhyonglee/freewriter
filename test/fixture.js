@@ -1,4 +1,4 @@
-const { test: base, _electron } = require('@playwright/test');
+const { test: base, expect, _electron } = require('@playwright/test');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -21,6 +21,21 @@ async function launch({ dir, userData, env = {} }) {
   return { app, page };
 }
 
+function seed(dir, sessions) {
+  for (const [name, text] of Object.entries(sessions)) fs.writeFileSync(path.join(dir, name), text);
+}
+
+/** Launches the app on a sessions folder holding just `text`, and opens that session. */
+async function launchWithSession(text, { dir = tempDir('fw-'), userData = tempDir('fw-') } = {}) {
+  const name = '2025-01-02 09-05-00.md';
+  seed(dir, { [name]: text });
+  const { app, page } = await launch({ dir, userData });
+  await page.keyboard.press(`${mod}+o`);
+  await page.locator('#sidebar li').first().click();
+  await expect(page.locator('#sidebar')).toBeHidden();
+  return { app, page, dir, file: path.join(dir, name) };
+}
+
 const test = base.extend({
   dir: async ({}, use) => use(tempDir('fw-sessions-')),
   userData: async ({}, use) => use(tempDir('fw-userdata-')),
@@ -33,4 +48,4 @@ const test = base.extend({
   page: async ({ launched }, use) => use(launched.page),
 });
 
-module.exports = { test, expect: base.expect, launch, mod, tempDir };
+module.exports = { test, expect, launch, launchWithSession, mod, seed, tempDir };

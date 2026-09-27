@@ -1,12 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { test, expect, launch, mod, tempDir } = require('./fixture');
+const { test, expect, launch, mod, seed, tempDir } = require('./fixture');
 
 const mdFiles = (dir) => fs.readdirSync(dir).filter((f) => f.endsWith('.md')).sort();
-
-function seed(dir, sessions) {
-  for (const [name, text] of Object.entries(sessions)) fs.writeFileSync(path.join(dir, name), text);
-}
 
 test('#4 AC1: Ctrl/Cmd+O toggles the sidebar, which is hidden on launch', async ({ page }) => {
   const sidebar = page.locator('#sidebar');
@@ -53,7 +49,7 @@ test('#4 AC3: clicking a session loads it and further edits save to the same fil
 
   await page.keyboard.press(`${mod}+o`);
   await page.locator('#sidebar li').first().click();
-  await expect(page.locator('#editor')).toHaveValue('An old session');
+  await expect(page.locator('#editor')).toHaveText('An old session');
   await expect(page.locator('#editor')).toBeFocused();
 
   await page.keyboard.press('End');
@@ -69,7 +65,7 @@ test('#4 AC4: Ctrl/Cmd+N starts a blank session and leaves the previous file int
   const { app, page } = await launch({ dir, userData: tempDir('fw-') });
   await page.keyboard.type('First session');
   await page.keyboard.press(`${mod}+n`);
-  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toHaveText('');
   await expect(page.locator('#editor')).toBeFocused();
 
   const [first] = mdFiles(dir);

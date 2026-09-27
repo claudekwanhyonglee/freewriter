@@ -73,7 +73,7 @@ test('#5 AC2: sessions and new-session buttons act like their shortcuts', async 
   await expect(page.locator('#sidebar')).toBeHidden();
 
   await button(page, 'New session').click();
-  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toHaveText('');
   await expect(page.locator('#editor')).toBeFocused();
   await page.keyboard.type('Else');
   await expect.poll(() => fs.readdirSync(dir).length).toBe(2);
@@ -115,7 +115,7 @@ test('#5 AC3: Ctrl/Cmd += / - / 0 enlarge, shrink and reset text size within bou
 
   await page.keyboard.press(`${mod}+0`);
   expect(await fontSize(page)).toBe(initial);
-  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toHaveText('');
 });
 
 test('#5 AC4: text size persists across restarts', async () => {
