@@ -4,19 +4,25 @@ const { test, expect, launchWithSession } = require('./fixture');
 const editor = (page) => page.locator('#editor');
 
 /**
- * Puts the caret at the start of the first line of text beginning with `line`, and waits for the
- * editor to pick it up. Set directly: arrow keys faster than any typist overtake the editor's caret.
- * The editor reads the caret on `selectionchange`, and its listener was added first, so it has the
- * new caret by the time ours runs.
- * Not for the document's first line: the editor puts a caret set there by script back where it was.
+ * Puts the caret at the start of the first line of text beginning with `line`, once the editor has
+ * taken it. Set directly: arrow keys faster than any typist overtake the editor's caret.
+ * Retried until it stays put: on a slow machine, a session only just opened can still move the
+ * caret back to its end (the editor restores its own caret for a moment after gaining focus).
+ * Not for the document's first line: the editor always puts a caret set there by script back.
  */
 async function caretBefore(page, line) {
-  await page.evaluate((line) => new Promise((done) => {
+  const place = () => page.evaluate((line) => new Promise((done) => {
     document.addEventListener('selectionchange', done, { once: true });
     const walker = document.createTreeWalker(document.getElementById('editor'), NodeFilter.SHOW_TEXT);
     while (walker.nextNode() && !walker.currentNode.data.startsWith(line));
     getSelection().collapse(walker.currentNode, 0);
   }), line);
+  const caret = () => page.evaluate(() => `${getSelection().anchorNode.textContent}@${getSelection().anchorOffset}`);
+  await expect(async () => {
+    await place();
+    await page.waitForTimeout(100); // longer than the editor's put-back after focus (20ms)
+    expect(await caret()).toMatch(new RegExp(`^${line}.*@0$`));
+  }).toPass({ timeout: 5000 });
 }
 
 /** Opens `text`, presses Backspace at the start of `line` and types "X" where the caret lands. */
