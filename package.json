@@ -1,0 +1,17 @@
+{
+  "name": "freewriter",
+  "version": "0.1.0",
+  "description": "A minimalist desktop app for freewriting",
+  "main": "src/main.js",
+  "author": "claudekwanhyonglee",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "electron": "^44.4.5"
+  }
+}

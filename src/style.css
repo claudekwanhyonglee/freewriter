@@ -1,0 +1,40 @@
+:root {
+  --bg: #f7f3ea;
+  --text: #3a3a3a;
+  --font-size: 22px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --text: #cfcfcf;
+  }
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#editor {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  /* Padding centres a column of at most 65ch at any window width. */
+  padding: 12vh max(1.5rem, calc((100% - 65ch) / 2));
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  caret-color: var(--text);
+  font: var(--font-size)/1.6 Charter, "Bitstream Charter", "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif;
+}
+
+body.typing, body.typing * {
+  cursor: none;
+}
