@@ -1,0 +1,143 @@
+:root {
+  --bg: #f7f3ea;
+  --text: #3a3a3a;
+  --panel: #efe9dc;
+  --line: rgba(0, 0, 0, 0.07);
+  --font-size: 22px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1e1e1e;
+    --text: #cfcfcf;
+    --panel: #252525;
+    --line: rgba(255, 255, 255, 0.07);
+  }
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#editor {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  /* Padding centres a column of at most 65ch at any window width. */
+  padding: 12vh max(1.5rem, calc((100% - 65ch) / 2));
+  border: 0;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--text);
+  caret-color: var(--text);
+  font: var(--font-size)/1.6 Charter, "Bitstream Charter", "Iowan Old Style", Georgia, Cambria, "Times New Roman", serif;
+}
+
+#sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(22rem, 85vw);
+  overflow-y: auto;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  font: 15px/1.4 system-ui, sans-serif;
+}
+
+#sidebar[hidden] {
+  display: none;
+}
+
+#session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem 0;
+}
+
+#session-list button {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 1.25rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+#session-list button:hover,
+#session-list button:focus-visible {
+  background: var(--line);
+  outline: none;
+}
+
+#session-list .date {
+  display: block;
+  font-size: 0.8em;
+  opacity: 0.6;
+}
+
+#session-list .preview {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#controls {
+  position: fixed;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s, visibility 0.4s;
+}
+
+#controls.shown {
+  opacity: 0.35;
+  visibility: visible;
+  transition: opacity 0.15s, visibility 0s;
+}
+
+#controls.shown:hover {
+  opacity: 0.8;
+}
+
+#controls button {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+#controls button:hover {
+  background: var(--line);
+}
+
+#controls svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.typing, body.typing * {
+  cursor: none;
+}
