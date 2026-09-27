@@ -11,7 +11,7 @@ const isFullScreen = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.
 
 test('#5 AC1: moving the mouse reveals a faint row of buttons in a corner', async ({ page }) => {
   await expect(controls(page)).toBeHidden();
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await expect(controls(page)).toBeVisible();
 
   for (const name of ['Sessions', 'New session', 'Text smaller', 'Text bigger', 'Fullscreen']) {
@@ -26,8 +26,16 @@ test('#5 AC1: moving the mouse reveals a faint row of buttons in a corner', asyn
   expect(width - rect.right).toBeLessThan(40);
 });
 
+test('#5 AC1: a mousemove without real movement (window opening under the pointer) reveals nothing', async ({ page }) => {
+  await page.keyboard.type('a');
+  await page.evaluate(() => document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, movementX: 0, movementY: 0 })));
+  await page.waitForTimeout(300);
+  expect(await controls(page).isVisible()).toBe(false);
+  expect(await page.evaluate(() => getComputedStyle(document.getElementById('editor')).cursor)).toBe('none');
+});
+
 test('#5 AC1: buttons fade out ~2 s after the mouse stops', async ({ page }) => {
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await expect(controls(page)).toBeVisible();
   await page.waitForTimeout(1500);
   await expect(controls(page)).toBeVisible();
@@ -35,14 +43,14 @@ test('#5 AC1: buttons fade out ~2 s after the mouse stops', async ({ page }) => 
 });
 
 test('#5 AC1: buttons are hidden while typing', async ({ page }) => {
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await expect(controls(page)).toBeVisible();
   await page.keyboard.type('a');
   await expect(controls(page)).toBeHidden();
 });
 
 test('#5 AC2: each button has a tooltip naming its shortcut', async ({ page }) => {
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   const expected = {
     'Sessions': shortcutLabel('O'),
     'New session': shortcutLabel('N'),
@@ -57,7 +65,7 @@ test('#5 AC2: each button has a tooltip naming its shortcut', async ({ page }) =
 
 test('#5 AC2: sessions and new-session buttons act like their shortcuts', async ({ page, dir }) => {
   await page.keyboard.type('Something');
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await button(page, 'Sessions').click();
   await expect(page.locator('#sidebar')).toBeVisible();
   await expect(page.locator('#sidebar li')).toHaveCount(1);
@@ -73,7 +81,7 @@ test('#5 AC2: sessions and new-session buttons act like their shortcuts', async 
 
 test('#5 AC2: text size buttons act like their shortcuts', async ({ page }) => {
   const start = await fontSize(page);
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await button(page, 'Text bigger').click();
   const bigger = await fontSize(page);
   expect(bigger).toBeGreaterThan(start);
@@ -137,10 +145,10 @@ test('#5 AC5: F11 toggles fullscreen', async ({ app, page }) => {
 });
 
 test('#5 AC5: the fullscreen button toggles fullscreen', async ({ app, page }) => {
-  await page.mouse.move(300, 300);
+  await page.mouse.move(300, 300, { steps: 5 });
   await button(page, 'Fullscreen').click();
   await expect.poll(() => isFullScreen(app)).toBe(true);
-  await page.mouse.move(310, 310);
+  await page.mouse.move(310, 310, { steps: 5 });
   await button(page, 'Fullscreen').click();
   await expect.poll(() => isFullScreen(app)).toBe(false);
 });

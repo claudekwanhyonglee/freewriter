@@ -112,13 +112,20 @@ function setUpControls() {
   }
 }
 
+// Chromium also fires mousemove when the window appears or scrolls under a still pointer; ignore those.
+function onRealMouseMove(handler) {
+  document.addEventListener('mousemove', (event) => {
+    if (event.movementX || event.movementY) handler(event);
+  });
+}
+
 function showControlsOnMouseMove() {
   let fadeTimer;
   const hide = () => {
     clearTimeout(fadeTimer);
     controls.classList.remove('shown');
   };
-  document.addEventListener('mousemove', () => {
+  onRealMouseMove(() => {
     controls.classList.add('shown');
     clearTimeout(fadeTimer);
     fadeTimer = setTimeout(hide, CONTROLS_LINGER_MS);
@@ -128,7 +135,7 @@ function showControlsOnMouseMove() {
 
 function hideCursorWhileTyping() {
   editor.addEventListener('keydown', () => document.body.classList.add('typing'));
-  document.addEventListener('mousemove', () => document.body.classList.remove('typing'));
+  onRealMouseMove(() => document.body.classList.remove('typing'));
 }
 
 setTextSize(textSize, { save: false });
