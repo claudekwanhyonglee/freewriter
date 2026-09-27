@@ -6,7 +6,7 @@ import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { $prose, $inputRule, $view, replaceAll } from '@milkdown/kit/utils';
-import { Plugin, Selection } from '@milkdown/kit/prose/state';
+import { Plugin, Selection, TextSelection } from '@milkdown/kit/prose/state';
 import { InputRule } from '@milkdown/kit/prose/inputrules';
 import { findWrapping, liftTarget } from '@milkdown/kit/prose/transform';
 import { keymap } from '@milkdown/kit/prose/keymap';
@@ -185,6 +185,47 @@ function changeReporter(onChange) {
   return { plugin, flush, discard };
 }
 
+// --- Search matches ---------------------------------------------------------------
+
+const NOT_SEPARATOR = '[^\\s\\p{Z}\\p{P}]'; // separators as the search index splits words
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** The first of `words` in `doc`, whole and in any case, as a document range. */
+function findFirstWord(doc, words) {
+  const pattern = new RegExp(`(?<!${NOT_SEPARATOR})(${words.map(escapeRegExp).join('|')})(?!${NOT_SEPARATOR})`, 'iu');
+  let found = null;
+  doc.descendants((node, pos) => {
+    if (found || !node.isTextblock) return !found;
+    // One character per leaf (image, hard break), so string offsets are document offsets.
+    const match = pattern.exec(node.textBetween(0, node.content.size, undefined, '\ufffc'));
+    if (match) found = { from: pos + 1 + match.index, to: pos + 1 + match.index + match[0].length };
+    return false;
+  });
+  return found;
+}
+
+/** Scrolls `scroller` so the line at `pos` sits in its middle. */
+function centreOn(view, scroller, pos) {
+  const { top, bottom } = view.coordsAtPos(pos);
+  scroller.scrollTop += (top + bottom) / 2 - scroller.getBoundingClientRect().top - scroller.clientHeight / 2;
+}
+
+/** A glow over from–to that fades by itself; `scroller` must be positioned so it scrolls along. */
+function glow(view, scroller, { from, to }) {
+  const start = view.coordsAtPos(from);
+  const end = view.coordsAtPos(to);
+  const origin = scroller.getBoundingClientRect();
+  const el = Object.assign(document.createElement('div'), { className: 'search-glow' });
+  Object.assign(el.style, {
+    left: `${start.left - origin.left + scroller.scrollLeft}px`,
+    top: `${start.top - origin.top + scroller.scrollTop}px`,
+    width: `${end.right - start.left}px`,
+    height: `${start.bottom - start.top}px`,
+  });
+  el.addEventListener('animationend', () => el.remove());
+  scroller.append(el);
+}
+
 // --- Editor -----------------------------------------------------------------------
 
 /**
@@ -226,6 +267,14 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
       changes.discard();
       view.focus(); // first: scrolling into view follows the DOM selection, which is stale until focused
       view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)).scrollIntoView());
+    },
+    /** Puts the caret, selecting nothing, before the first of `words`, centres its line and makes it glow. */
+    revealMatch(words) {
+      const match = findFirstWord(view.state.doc, words);
+      if (!match) return;
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, match.from)));
+      centreOn(view, root, match.from);
+      glow(view, root, match);
     },
   };
 }

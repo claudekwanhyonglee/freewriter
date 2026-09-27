@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('freewriter', {
   openSession: (name) => ipcRenderer.invoke('open-session', name),
   newSession: () => ipcRenderer.invoke('new-session'),
   deleteSession: (name) => ipcRenderer.invoke('delete-session', name),
+  searchSessions: (query) => ipcRenderer.invoke('search-sessions', query),
   // Read synchronously so the first paint already uses the saved size and font.
   savedFontSize: ipcRenderer.sendSync('get-setting', 'fontSize'),
   saveFontSize: (size) => ipcRenderer.send('set-setting', 'fontSize', size),

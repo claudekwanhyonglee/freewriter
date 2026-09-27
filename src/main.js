@@ -4,8 +4,13 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const { Session, sessionsDir, listSessions, sessionPath } = require('./sessions');
 const { settingsStore } = require('./settings');
+const { sessionSearch } = require('./search');
 
 let session;
+let search;
+
+/** A session whose saves keep the search index current. */
+const startSession = (dir, file = null) => new Session(dir, file, (saved, text) => search.update(path.basename(saved), text));
 
 function setMenu() {
   // macOS needs an app/edit menu for Cmd+C/V/Z/Q; it lives in the global menu bar, not the window.
@@ -53,7 +58,7 @@ function createWindow() {
 
 function switchSession(file = null) {
   session.flush();
-  session = new Session(session.dir, file);
+  session = startSession(session.dir, file);
 }
 
 /**
@@ -63,8 +68,9 @@ function switchSession(file = null) {
 async function deleteSession(file) {
   session.flush(); // the trashed copy holds everything written
   const wasOpen = file === session.file;
-  if (wasOpen) session = new Session(session.dir); // not switchSession: its flush would recreate the file
+  if (wasOpen) session = startSession(session.dir); // not switchSession: its flush would recreate the file
   await shell.trashItem(file);
+  search.remove(path.basename(file));
   return wasOpen;
 }
 
@@ -84,6 +90,7 @@ function handleSessionMessages() {
   });
   ipcMain.handle('new-session', () => switchSession());
   ipcMain.handle('delete-session', (_event, name) => deleteSession(sessionPath(session.dir, name)));
+  ipcMain.handle('search-sessions', (_event, query) => search.search(String(query)));
   ipcMain.on('get-sessions-dir-url', (event) => { event.returnValue = `${pathToFileURL(session.dir).href}/`; });
 }
 
@@ -110,7 +117,9 @@ function handleViewMessages(settings) {
 }
 
 app.whenReady().then(() => {
-  session = new Session(sessionsDir(app.getPath('documents')));
+  const dir = sessionsDir(app.getPath('documents'));
+  search = sessionSearch(dir); // indexes in the background
+  session = startSession(dir);
   handleSessionMessages();
   const settings = settingsStore(app.getPath('userData'));
   handleViewMessages(settings);

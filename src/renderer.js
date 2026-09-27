@@ -4,6 +4,7 @@ const api = window.freewriter;
 const isMac = api.platform === 'darwin';
 const sidebar = document.getElementById('sidebar');
 const sessionList = document.getElementById('session-list');
+const searchBox = document.getElementById('search');
 const controls = document.getElementById('controls');
 
 const TEXT_SIZE = { min: 14, max: 40, initial: 22, step: 2 };
@@ -41,7 +42,8 @@ window.addEventListener('beforeunload', saveNow);
 
 const TRASH_ICON = '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
 
-function sessionItem({ name, label, firstLine }) {
+/** A row in the sidebar; a search result also has the `terms` it matched on. */
+function sessionItem({ name, label, firstLine, terms }) {
   const open = document.createElement('button');
   const date = document.createElement('span');
   const preview = document.createElement('span');
@@ -51,7 +53,7 @@ function sessionItem({ name, label, firstLine }) {
   preview.textContent = firstLine;
   open.className = 'open';
   open.append(date, preview);
-  open.addEventListener('click', () => openSession(name));
+  open.addEventListener('click', () => openSession(name, terms));
 
   const trash = document.createElement('button');
   trash.className = 'trash';
@@ -72,15 +74,26 @@ async function toggleSidebar() {
     return;
   }
   saveNow();
-  const sessions = await api.listSessions();
-  sessionList.replaceChildren(...sessions.map(sessionItem));
+  await showSessions();
   sidebar.hidden = false;
 }
 
-async function openSession(name) {
+let latestListing = 0;
+
+/** Lists the sessions matching the search box, or all of them, newest first, when it's empty. */
+async function showSessions() {
+  const listing = ++latestListing;
+  const query = searchBox.value.trim();
+  const sessions = await (query ? api.searchSessions(query) : api.listSessions());
+  if (listing !== latestListing) return; // a later keystroke's list is on its way
+  sessionList.replaceChildren(...sessions.map(sessionItem));
+}
+
+async function openSession(name, terms) {
   saveNow();
   const text = await api.openSession(name);
   showInEditor(text); // the sidebar stays open, to click through sessions
+  if (terms) editor.revealMatch(terms);
 }
 
 /** A click in the writing area closes the sidebar; the click still lands in the editor. */
@@ -265,6 +278,7 @@ exitFullscreenOnEscape();
 zoomWithModifierWheel();
 setUpControls();
 closeSidebarOnWritingAreaClick();
+searchBox.addEventListener('input', showSessions);
 showControlsOnMouseMove();
 hideCursorWhileTyping();
 focusEditor();
