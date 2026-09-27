@@ -164,22 +164,64 @@ html, body {
   padding: 3.25rem 0 0.5rem; /* clear of the controls above it */
 }
 
+#session-list li {
+  position: relative;
+}
+
 #session-list button {
-  display: block;
-  width: 100%;
-  padding: 0.6rem 1.25rem;
   border: 0;
   background: none;
   color: var(--text);
   font: inherit;
-  text-align: left;
   cursor: pointer;
 }
 
-#session-list button:hover,
-#session-list button:focus-visible {
+#session-list .open {
+  display: block;
+  width: 100%;
+  padding: 0.6rem 3rem 0.6rem 1.25rem; /* room for the trash button on the right */
+  text-align: left;
+}
+
+#session-list li:hover .open,
+#session-list .open:focus-visible {
   background: var(--line);
   outline: none;
+}
+
+#session-list .trash {
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 6px;
+  opacity: 0.6;
+  visibility: hidden;
+}
+
+#session-list li:hover .trash,
+#session-list .trash:focus-visible {
+  visibility: visible;
+}
+
+#session-list .trash:hover {
+  opacity: 1;
+  background: var(--line);
+}
+
+#session-list .trash svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 #session-list .date {

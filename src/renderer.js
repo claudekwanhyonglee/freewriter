@@ -25,19 +25,29 @@ window.addEventListener('beforeunload', saveNow);
 
 // --- Sessions ---------------------------------------------------------------
 
+const TRASH_ICON = '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
+
 function sessionItem({ name, label, firstLine }) {
-  const button = document.createElement('button');
+  const open = document.createElement('button');
   const date = document.createElement('span');
   const preview = document.createElement('span');
   date.className = 'date';
   date.textContent = label;
   preview.className = 'preview';
   preview.textContent = firstLine;
-  button.append(date, preview);
-  button.addEventListener('click', () => openSession(name));
+  open.className = 'open';
+  open.append(date, preview);
+  open.addEventListener('click', () => openSession(name));
+
+  const trash = document.createElement('button');
+  trash.className = 'trash';
+  trash.innerHTML = TRASH_ICON;
+  trash.setAttribute('aria-label', 'Move to Trash');
+  trash.title = 'Move to Trash';
 
   const item = document.createElement('li');
-  item.append(button);
+  item.append(open, trash);
+  trash.addEventListener('click', () => deleteSession(name, item));
   return item;
 }
 
@@ -58,6 +68,13 @@ async function openSession(name) {
   const text = await api.openSession(name);
   sidebar.hidden = true;
   showInEditor(text);
+}
+
+async function deleteSession(name, item) {
+  saveNow();
+  const wasOpen = await api.deleteSession(name);
+  item.remove();
+  if (wasOpen) showInEditor('');
 }
 
 async function newSession() {

@@ -49,6 +49,18 @@ function switchSession(file = null) {
   session = new Session(session.dir, file);
 }
 
+/**
+ * Moves a session file to the OS trash, where it can be recovered, so there's no confirmation.
+ * Deleting the open session starts a new one; resolves to whether that happened.
+ */
+async function deleteSession(file) {
+  session.flush(); // the trashed copy holds everything written
+  const wasOpen = file === session.file;
+  if (wasOpen) session = new Session(session.dir); // not switchSession: its flush would recreate the file
+  await shell.trashItem(file);
+  return wasOpen;
+}
+
 function handleSessionMessages() {
   ipcMain.on('text-changed', (event, text) => {
     session.update(text);
@@ -64,6 +76,7 @@ function handleSessionMessages() {
     return fs.readFileSync(file, 'utf8');
   });
   ipcMain.handle('new-session', () => switchSession());
+  ipcMain.handle('delete-session', (_event, name) => deleteSession(sessionPath(session.dir, name)));
   ipcMain.on('get-sessions-dir-url', (event) => { event.returnValue = `${pathToFileURL(session.dir).href}/`; });
 }
 
