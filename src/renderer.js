@@ -1,12 +1,14 @@
 const api = window.freewriter;
+const isMac = api.platform === 'darwin';
 const editor = document.getElementById('editor');
 const sidebar = document.getElementById('sidebar');
 const sessionList = document.getElementById('session-list');
+const controls = document.getElementById('controls');
 
-function hideCursorWhileTyping() {
-  editor.addEventListener('keydown', () => document.body.classList.add('typing'));
-  document.addEventListener('mousemove', () => document.body.classList.remove('typing'));
-}
+const TEXT_SIZE = { min: 14, max: 40, initial: 22, step: 2 };
+const CONTROLS_LINGER_MS = 2000;
+
+// --- Editor -----------------------------------------------------------------
 
 function autosave() {
   editor.addEventListener('input', () => api.textChanged(editor.value));
@@ -18,6 +20,8 @@ function showInEditor(text) {
   editor.scrollTop = editor.scrollHeight;
   editor.focus();
 }
+
+// --- Sessions ---------------------------------------------------------------
 
 function sessionItem({ name, label, firstLine }) {
   const button = document.createElement('button');
@@ -58,22 +62,79 @@ async function newSession() {
   showInEditor('');
 }
 
-const shortcuts = {
-  o: toggleSidebar,
-  n: newSession,
-};
+// --- Text size ----------------------------------------------------------------
+
+let textSize = api.savedFontSize ?? TEXT_SIZE.initial;
+
+function setTextSize(size, { save = true } = {}) {
+  textSize = Math.min(TEXT_SIZE.max, Math.max(TEXT_SIZE.min, size));
+  document.documentElement.style.setProperty('--font-size', `${textSize}px`);
+  if (save) api.saveFontSize(textSize);
+}
+
+const textBigger = () => setTextSize(textSize + TEXT_SIZE.step);
+const textSmaller = () => setTextSize(textSize - TEXT_SIZE.step);
+const textReset = () => setTextSize(TEXT_SIZE.initial);
+
+// --- Shortcuts and controls ---------------------------------------------------
+
+const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFullscreen: api.toggleFullscreen };
+
+const modifiedShortcuts = { o: 'toggleSidebar', n: 'newSession', '=': 'textBigger', '+': 'textBigger', '-': 'textSmaller', '0': 'textReset' };
+const plainShortcuts = { F11: 'toggleFullscreen' };
+
+function shortcutAction(event) {
+  const modifier = isMac ? event.metaKey : event.ctrlKey;
+  if (event.altKey) return null;
+  return modifier ? modifiedShortcuts[event.key.toLowerCase()] : plainShortcuts[event.key];
+}
 
 function handleShortcuts() {
   document.addEventListener('keydown', (event) => {
-    const modifier = api.platform === 'darwin' ? event.metaKey : event.ctrlKey;
-    const action = modifier && !event.altKey && shortcuts[event.key.toLowerCase()];
+    const action = shortcutAction(event);
     if (!action) return;
     event.preventDefault();
-    action();
+    actions[action]();
   });
 }
 
-hideCursorWhileTyping();
+function shortcutLabel(button) {
+  const { shortcut, key } = button.dataset;
+  if (key) return key;
+  return isMac ? `⌘${shortcut}` : `Ctrl+${shortcut}`;
+}
+
+function setUpControls() {
+  for (const button of controls.querySelectorAll('button')) {
+    button.title = `${button.getAttribute('aria-label')} (${shortcutLabel(button)})`;
+    button.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the editor
+    button.addEventListener('click', () => actions[button.dataset.action]());
+  }
+}
+
+function showControlsOnMouseMove() {
+  let fadeTimer;
+  const hide = () => {
+    clearTimeout(fadeTimer);
+    controls.classList.remove('shown');
+  };
+  document.addEventListener('mousemove', () => {
+    controls.classList.add('shown');
+    clearTimeout(fadeTimer);
+    fadeTimer = setTimeout(hide, CONTROLS_LINGER_MS);
+  });
+  editor.addEventListener('keydown', hide);
+}
+
+function hideCursorWhileTyping() {
+  editor.addEventListener('keydown', () => document.body.classList.add('typing'));
+  document.addEventListener('mousemove', () => document.body.classList.remove('typing'));
+}
+
+setTextSize(textSize, { save: false });
 autosave();
 handleShortcuts();
+setUpControls();
+showControlsOnMouseMove();
+hideCursorWhileTyping();
 editor.focus();

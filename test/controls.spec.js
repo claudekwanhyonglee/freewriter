@@ -1,0 +1,146 @@
+const fs = require('fs');
+const { test, expect, launch, mod, tempDir } = require('./fixture');
+
+const isMac = process.platform === 'darwin';
+const shortcutLabel = (key) => (isMac ? `⌘${key}` : `Ctrl+${key}`);
+
+const controls = (page) => page.locator('#controls');
+const button = (page, name) => page.getByRole('button', { name, exact: true });
+const fontSize = (page) => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('editor')).fontSize));
+const isFullScreen = (app) => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isFullScreen());
+
+test('#5 AC1: moving the mouse reveals a faint row of buttons in a corner', async ({ page }) => {
+  await expect(controls(page)).toBeHidden();
+  await page.mouse.move(300, 300);
+  await expect(controls(page)).toBeVisible();
+
+  for (const name of ['Sessions', 'New session', 'Text smaller', 'Text bigger', 'Fullscreen']) {
+    await expect(button(page, name)).toBeVisible();
+  }
+  const { opacity, rect, width } = await page.evaluate(() => {
+    const el = document.getElementById('controls');
+    return { opacity: parseFloat(getComputedStyle(el).opacity), rect: el.getBoundingClientRect().toJSON(), width: innerWidth };
+  });
+  expect(opacity).toBeLessThan(0.6);
+  expect(rect.top).toBeLessThan(40);
+  expect(width - rect.right).toBeLessThan(40);
+});
+
+test('#5 AC1: buttons fade out ~2 s after the mouse stops', async ({ page }) => {
+  await page.mouse.move(300, 300);
+  await expect(controls(page)).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(controls(page)).toBeVisible();
+  await expect(controls(page)).toBeHidden({ timeout: 1500 });
+});
+
+test('#5 AC1: buttons are hidden while typing', async ({ page }) => {
+  await page.mouse.move(300, 300);
+  await expect(controls(page)).toBeVisible();
+  await page.keyboard.type('a');
+  await expect(controls(page)).toBeHidden();
+});
+
+test('#5 AC2: each button has a tooltip naming its shortcut', async ({ page }) => {
+  await page.mouse.move(300, 300);
+  const expected = {
+    'Sessions': shortcutLabel('O'),
+    'New session': shortcutLabel('N'),
+    'Text smaller': shortcutLabel('-'),
+    'Text bigger': shortcutLabel('='),
+    'Fullscreen': 'F11',
+  };
+  for (const [name, shortcut] of Object.entries(expected)) {
+    expect(await button(page, name).getAttribute('title')).toContain(shortcut);
+  }
+});
+
+test('#5 AC2: sessions and new-session buttons act like their shortcuts', async ({ page, dir }) => {
+  await page.keyboard.type('Something');
+  await page.mouse.move(300, 300);
+  await button(page, 'Sessions').click();
+  await expect(page.locator('#sidebar')).toBeVisible();
+  await expect(page.locator('#sidebar li')).toHaveCount(1);
+  await button(page, 'Sessions').click();
+  await expect(page.locator('#sidebar')).toBeHidden();
+
+  await button(page, 'New session').click();
+  await expect(page.locator('#editor')).toHaveValue('');
+  await expect(page.locator('#editor')).toBeFocused();
+  await page.keyboard.type('Else');
+  await expect.poll(() => fs.readdirSync(dir).length).toBe(2);
+});
+
+test('#5 AC2: text size buttons act like their shortcuts', async ({ page }) => {
+  const start = await fontSize(page);
+  await page.mouse.move(300, 300);
+  await button(page, 'Text bigger').click();
+  const bigger = await fontSize(page);
+  expect(bigger).toBeGreaterThan(start);
+
+  await button(page, 'Text smaller').click();
+  await button(page, 'Text smaller').click();
+  expect(await fontSize(page)).toBeLessThan(start);
+});
+
+test('#5 AC3: Ctrl/Cmd += / - / 0 enlarge, shrink and reset text size within bounds', async ({ page }) => {
+  const initial = await fontSize(page);
+  await page.keyboard.press(`${mod}+=`);
+  expect(await fontSize(page)).toBeGreaterThan(initial);
+  await page.keyboard.press(`${mod}+0`);
+  expect(await fontSize(page)).toBe(initial);
+  await page.keyboard.press(`${mod}+-`);
+  expect(await fontSize(page)).toBeLessThan(initial);
+
+  for (let i = 0; i < 40; i++) await page.keyboard.press(`${mod}+-`);
+  const min = await fontSize(page);
+  await page.keyboard.press(`${mod}+-`);
+  expect(await fontSize(page)).toBe(min);
+  expect(min).toBeGreaterThanOrEqual(10);
+
+  for (let i = 0; i < 80; i++) await page.keyboard.press(`${mod}+=`);
+  const max = await fontSize(page);
+  await page.keyboard.press(`${mod}+=`);
+  expect(await fontSize(page)).toBe(max);
+  expect(max).toBeGreaterThan(initial);
+  expect(max).toBeLessThanOrEqual(80);
+
+  await page.keyboard.press(`${mod}+0`);
+  expect(await fontSize(page)).toBe(initial);
+  await expect(page.locator('#editor')).toHaveValue('');
+});
+
+test('#5 AC4: text size persists across restarts', async () => {
+  const dir = tempDir('fw-');
+  const userData = tempDir('fw-');
+  const first = await launch({ dir, userData });
+  const initial = await fontSize(first.page);
+  await first.page.keyboard.press(`${mod}+=`);
+  await first.page.keyboard.press(`${mod}+=`);
+  const chosen = await fontSize(first.page);
+  expect(chosen).toBeGreaterThan(initial);
+  await first.app.close();
+
+  const second = await launch({ dir, userData });
+  expect(await fontSize(second.page)).toBe(chosen);
+  await second.app.close();
+
+  expect(fs.readdirSync(dir)).toEqual([]); // settings don't live in the sessions folder
+});
+
+test('#5 AC5: F11 toggles fullscreen', async ({ app, page }) => {
+  expect(await isFullScreen(app)).toBe(false);
+  await page.keyboard.press('F11');
+  await expect.poll(() => isFullScreen(app)).toBe(true);
+  await page.keyboard.press('F11');
+  await expect.poll(() => isFullScreen(app)).toBe(false);
+});
+
+test('#5 AC5: the fullscreen button toggles fullscreen', async ({ app, page }) => {
+  await page.mouse.move(300, 300);
+  await button(page, 'Fullscreen').click();
+  await expect.poll(() => isFullScreen(app)).toBe(true);
+  await page.mouse.move(310, 310);
+  await button(page, 'Fullscreen').click();
+  await expect.poll(() => isFullScreen(app)).toBe(false);
+});

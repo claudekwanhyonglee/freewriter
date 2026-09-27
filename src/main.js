@@ -2,6 +2,7 @@ const { app, BrowserWindow, Menu, nativeTheme, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { Session, sessionsDir, listSessions, sessionPath } = require('./sessions');
+const { settingsStore } = require('./settings');
 
 let session;
 
@@ -47,9 +48,21 @@ function handleSessionMessages() {
   ipcMain.handle('new-session', () => switchSession());
 }
 
+function handleViewMessages(settings) {
+  ipcMain.on('get-font-size', (event) => { event.returnValue = settings.get('fontSize') ?? null; });
+  ipcMain.on('set-font-size', (_event, size) => {
+    if (Number.isFinite(size)) settings.set('fontSize', size);
+  });
+  ipcMain.on('toggle-fullscreen', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    win.setFullScreen(!win.isFullScreen());
+  });
+}
+
 app.whenReady().then(() => {
   session = new Session(sessionsDir(app.getPath('documents')));
   handleSessionMessages();
+  handleViewMessages(settingsStore(app.getPath('userData')));
   setMenu();
   createWindow();
 });
