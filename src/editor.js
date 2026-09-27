@@ -216,7 +216,9 @@ const GLOW_MS = 800;
 function glow(view, scroller, { from, to }) {
   const start = view.coordsAtPos(from);
   const end = view.coordsAtPos(to);
-  const origin = scroller.getBoundingClientRect();
+  // Absolute positions start inside the border and scrollbar gutter.
+  const box = scroller.getBoundingClientRect();
+  const origin = { left: box.left + scroller.clientLeft, top: box.top + scroller.clientTop };
   const el = Object.assign(document.createElement('div'), { className: 'search-glow' });
   Object.assign(el.style, {
     left: `${start.left - origin.left + scroller.scrollLeft}px`,
