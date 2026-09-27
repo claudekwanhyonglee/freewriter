@@ -10,6 +10,7 @@ import { findWrapping } from '@milkdown/kit/prose/transform';
 import { keymap } from '@milkdown/kit/prose/keymap';
 import { slashMenu } from './slash-menu.js';
 import { tables } from './tables.js';
+import { starter } from './starter.js';
 
 // --- Checklists -------------------------------------------------------------------
 
@@ -168,6 +169,7 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
     .use(history)
     .use(clipboard)
     .use([checklistInputRule, listItemView, codeFenceOnEnter, linkClicks(openLink, isMac), changes.plugin].flat())
+    .use(starter)
     .create();
 
   const view = editor.ctx.get(editorViewCtx);
