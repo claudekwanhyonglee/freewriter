@@ -206,6 +206,36 @@ test('#9 AC4: with the sidebar open, the controls stay on top and can close it',
   await expect(page.locator('#sidebar')).toBeHidden();
 });
 
+// --- #30 Esc exits fullscreen ---------------------------------------------------
+
+test('#30 AC1: in fullscreen, Esc returns to a normal window', async ({ app, page }) => {
+  await page.keyboard.press(fullscreenKey);
+  await expect.poll(() => isFullScreen(app)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isFullScreen(app)).toBe(false);
+});
+
+test('#30 AC1: in fullscreen, an Esc that closes the slash menu keeps fullscreen', async ({ app, page }) => {
+  await page.keyboard.press(fullscreenKey);
+  await expect.poll(() => isFullScreen(app)).toBe(true);
+  await page.keyboard.type('/');
+  await expect(page.locator('#slash-menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#slash-menu')).toBeHidden();
+  await page.waitForTimeout(500);
+  expect(await isFullScreen(app)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => isFullScreen(app)).toBe(false);
+});
+
+test('#30 AC2: outside fullscreen, Esc changes neither fullscreen nor the text', async ({ app, page }) => {
+  await page.keyboard.type('Some words');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(500);
+  expect(await isFullScreen(app)).toBe(false);
+  await expect(page.locator('#editor')).toHaveText('Some words');
+});
+
 // --- #10 Ctrl+scroll zoom -------------------------------------------------------
 
 /** One notch of the mouse wheel, with Ctrl/Cmd held; negative scrolls up. */

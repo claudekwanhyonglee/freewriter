@@ -23,12 +23,16 @@
       <svg viewBox="0 0 24 24"><path d="M3 18l4.5-10L12 18M4.6 14.5h5.8M15 13h6M18 10v6"/></svg>
     </button>
     <button data-action="toggleFontList" aria-label="Font" aria-haspopup="listbox" aria-expanded="false" class="font-button">Aa</button>
+    <button data-action="toggleTheme" aria-label="Theme">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+    </button>
     <button data-action="toggleFullscreen" data-key="F11" data-mac-key="⌃⌘F" aria-label="Fullscreen">
       <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
     </button>
     <ul id="font-list" role="listbox" aria-label="Font" hidden></ul>
   </nav>
   <aside id="sidebar" hidden aria-label="Sessions">
+    <input id="search" type="search" placeholder="Search" aria-label="Search sessions" spellcheck="false" autocomplete="off">
     <ul id="session-list"></ul>
   </aside>
   <script type="module" src="renderer.bundle.js"></script>

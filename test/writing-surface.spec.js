@@ -1,4 +1,5 @@
-const { test, expect, launch, tempDir } = require('./fixture');
+const fs = require('fs');
+const { test, expect, launch, launchWithSession, tempDir, setOsTheme: setTheme } = require('./fixture');
 
 const rgb = (css) => css.match(/\d+/g).slice(0, 3).map(Number);
 
@@ -7,13 +8,6 @@ async function colours(page) {
     background: getComputedStyle(document.body).backgroundColor,
     text: getComputedStyle(document.getElementById('editor')).color,
   }));
-}
-
-// Emulates the OS setting as Chromium sees it; nativeTheme.themeSource doesn't reach headless Xvfb.
-async function setTheme(page, theme) {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
-  await expect.poll(() => page.evaluate((t) => matchMedia(`(prefers-color-scheme: ${t})`).matches, theme)).toBe(true);
 }
 
 test('#2 AC1: window shows within 2 s with a focused, empty editor that accepts typing', async () => {
@@ -104,4 +98,84 @@ test('#2 AC5: cursor hides after a keystroke and reappears on mouse move', async
   expect(await cursor()).toBe('none');
   await page.mouse.move(210, 210);
   expect(await cursor()).not.toBe('none');
+});
+
+// --- #32 Scroll past the end -----------------------------------------------------
+
+const LONG_DOC = Array.from({ length: 60 }, (_, i) => `Paragraph ${i}`).join('\n\n');
+
+/** Viewport tops of the first and last line of text, and the page's scroll position. */
+const lineTops = (page) => page.evaluate(() => {
+  const editor = document.getElementById('editor');
+  const lineTop = (textNode, which) => {
+    const range = document.createRange();
+    range.selectNodeContents(textNode);
+    const rects = range.getClientRects();
+    return (which === 'first' ? rects[0] : rects[rects.length - 1]).top;
+  };
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  while (walker.nextNode()) texts.push(walker.currentNode);
+  return { first: lineTop(texts[0], 'first'), last: lineTop(texts.at(-1), 'last') };
+});
+
+const scrollTo = (page, top) => page.evaluate((top) => {
+  const scroller = document.getElementById('page');
+  scroller.scrollTop = top;
+  return scroller.scrollTop;
+}, top);
+
+test('#32 AC1: a long doc scrolls until its last line sits where the first line starts, and no further', async () => {
+  const { app, page } = await launchWithSession(LONG_DOC);
+  await scrollTo(page, 0);
+  const firstLineTop = (await lineTops(page)).first;
+
+  await scrollTo(page, 1e9); // clamped to the furthest the page can scroll
+  const { last } = await lineTops(page);
+  expect(Math.abs(last - firstLineTop)).toBeLessThanOrEqual(2);
+  const viewportHeight = await page.evaluate(() => innerHeight);
+  expect(last).toBeGreaterThanOrEqual(0);
+  expect(last).toBeLessThan(viewportHeight);
+  await app.close();
+});
+
+test('#32 AC1: the last line stays visible at any text size', async () => {
+  const { app, page } = await launchWithSession(LONG_DOC);
+  for (const size of ['14px', '40px']) {
+    await page.evaluate((size) => document.documentElement.style.setProperty('--font-size', size), size);
+    await scrollTo(page, 0);
+    const firstLineTop = (await lineTops(page)).first;
+    await scrollTo(page, 1e9);
+    expect(Math.abs((await lineTops(page)).last - firstLineTop)).toBeLessThanOrEqual(2);
+  }
+  await app.close();
+});
+
+test('#32 AC2: the space below the text is empty and the saved text is unchanged', async () => {
+  const { app, page, file } = await launchWithSession(LONG_DOC);
+  await scrollTo(page, 1e9);
+  const below = await page.evaluate(() => {
+    const el = document.elementFromPoint(innerWidth / 2, innerHeight - 20);
+    return el.id || el.className;
+  });
+  expect(['editor', 'page']).toContain(below);
+  expect(await page.locator('#editor').innerText()).toBe(LONG_DOC);
+  await app.close();
+  expect(fs.readFileSync(file, 'utf8')).toBe(LONG_DOC);
+});
+
+test('#32 AC3: typing at the end of a doc keeps the cursor line in view', async () => {
+  const { app, page } = await launchWithSession(LONG_DOC);
+  await page.keyboard.press('Control+End');
+  for (let i = 0; i < 15; i++) {
+    await page.keyboard.press('Enter');
+    await page.keyboard.type(`More ${i}`);
+  }
+  const caret = await page.evaluate(() => {
+    const rect = getSelection().getRangeAt(0).getBoundingClientRect();
+    return { top: rect.top, bottom: rect.bottom, height: innerHeight };
+  });
+  expect(caret.top).toBeGreaterThanOrEqual(0);
+  expect(caret.bottom).toBeLessThanOrEqual(caret.height);
+  await app.close();
 });

@@ -4,10 +4,25 @@ const api = window.freewriter;
 const isMac = api.platform === 'darwin';
 const sidebar = document.getElementById('sidebar');
 const sessionList = document.getElementById('session-list');
+const searchBox = document.getElementById('search');
 const controls = document.getElementById('controls');
 
 const TEXT_SIZE = { min: 14, max: 40, initial: 22, step: 2 };
 const CONTROLS_LINGER_MS = 2000;
+
+// --- Theme --------------------------------------------------------------------
+
+// Set before anything awaits, so the first paint already has it. Without a saved theme the OS decides.
+const root = document.documentElement;
+if (api.savedTheme) root.dataset.theme = api.savedTheme;
+
+const osTheme = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+function toggleTheme() {
+  const theme = (root.dataset.theme ?? osTheme()) === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = theme;
+  api.saveTheme(theme);
+}
 
 // --- Editor -----------------------------------------------------------------
 
@@ -27,7 +42,8 @@ window.addEventListener('beforeunload', saveNow);
 
 const TRASH_ICON = '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>';
 
-function sessionItem({ name, label, firstLine }) {
+/** A row in the sidebar; a search result also has the `terms` it matched on. */
+function sessionItem({ name, label, firstLine, terms }) {
   const open = document.createElement('button');
   const date = document.createElement('span');
   const preview = document.createElement('span');
@@ -37,7 +53,7 @@ function sessionItem({ name, label, firstLine }) {
   preview.textContent = firstLine;
   open.className = 'open';
   open.append(date, preview);
-  open.addEventListener('click', () => openSession(name));
+  open.addEventListener('click', () => openSession(name, terms));
 
   const trash = document.createElement('button');
   trash.className = 'trash';
@@ -58,16 +74,31 @@ async function toggleSidebar() {
     return;
   }
   saveNow();
-  const sessions = await api.listSessions();
-  sessionList.replaceChildren(...sessions.map(sessionItem));
+  await showSessions();
   sidebar.hidden = false;
 }
 
-async function openSession(name) {
+let latestListing = 0;
+
+/** Lists the sessions matching the search box, or all of them, newest first, when it's empty. */
+async function showSessions() {
+  const listing = ++latestListing;
+  const query = searchBox.value.trim();
+  const sessions = await (query ? api.searchSessions(query) : api.listSessions());
+  if (listing !== latestListing) return; // a later keystroke's list is on its way
+  sessionList.replaceChildren(...sessions.map(sessionItem));
+}
+
+async function openSession(name, terms) {
   saveNow();
   const text = await api.openSession(name);
-  sidebar.hidden = true;
-  showInEditor(text);
+  showInEditor(text); // the sidebar stays open, to click through sessions
+  if (terms) editor.revealMatch(terms);
+}
+
+/** A click in the writing area closes the sidebar; the click still lands in the editor. */
+function closeSidebarOnWritingAreaClick() {
+  document.getElementById('page').addEventListener('mousedown', () => { sidebar.hidden = true; });
 }
 
 async function deleteSession(name, item) {
@@ -158,7 +189,9 @@ function setUpFontList() {
 
 // --- Shortcuts and controls ---------------------------------------------------
 
-const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFontList, toggleFullscreen: api.toggleFullscreen };
+const actions = {
+  toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFontList, toggleTheme, toggleFullscreen: api.toggleFullscreen,
+};
 
 const modifiedShortcuts = { o: 'toggleSidebar', n: 'newSession', '=': 'textBigger', '+': 'textBigger', '-': 'textSmaller', '0': 'textReset' };
 const plainShortcuts = { F11: 'toggleFullscreen' };
@@ -178,6 +211,18 @@ function handleShortcuts() {
     event.preventDefault();
     actions[action]();
   });
+}
+
+const popupOpen = () => Boolean(document.querySelector('#slash-menu:not([hidden]), #font-list:not([hidden])'));
+
+/**
+ * Esc leaves fullscreen, unless it's closing a popup. Checked while capturing, before the popups
+ * close; the editor claims every Esc (for selectParentNode), so defaultPrevented can't tell.
+ */
+function exitFullscreenOnEscape() {
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !popupOpen()) api.exitFullscreen();
+  }, { capture: true });
 }
 
 function shortcutLabel(button) {
@@ -229,8 +274,11 @@ setTextSize(textSize, { save: false });
 setFont(FONTS.includes(api.savedFont) ? api.savedFont : FONTS[0], { save: false });
 setUpFontList();
 handleShortcuts();
+exitFullscreenOnEscape();
 zoomWithModifierWheel();
 setUpControls();
+closeSidebarOnWritingAreaClick();
+searchBox.addEventListener('input', showSessions);
 showControlsOnMouseMove();
 hideCursorWhileTyping();
 focusEditor();

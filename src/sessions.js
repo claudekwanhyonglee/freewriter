@@ -23,11 +23,15 @@ function newSessionPath(dir, now = new Date()) {
   return path.join(dir, sessionFileName(date));
 }
 
-/** The session being written: gets a file on its first non-blank text, then saves with a short debounce. */
+/**
+ * The session being written: gets a file on its first non-blank text, then saves with a short debounce.
+ * `onSave(file, text)` hears about each save.
+ */
 class Session {
-  constructor(dir, file = null) {
+  constructor(dir, file = null, onSave = () => {}) {
     this.dir = dir;
     this.file = file;
+    this.onSave = onSave;
     this.text = null;
     this.timer = null;
   }
@@ -43,7 +47,9 @@ class Session {
   flush() {
     clearTimeout(this.timer);
     this.timer = null;
-    if (this.file && this.text !== null) fs.writeFileSync(this.file, this.text);
+    if (!this.file || this.text === null) return;
+    fs.writeFileSync(this.file, this.text);
+    this.onSave(this.file, this.text);
   }
 }
 
@@ -87,4 +93,4 @@ function sessionPath(dir, name) {
   return path.join(dir, name);
 }
 
-module.exports = { Session, sessionsDir, sessionFileName, listSessions, sessionPath };
+module.exports = { Session, sessionsDir, sessionFileName, sessionLabel, plainText, listSessions, sessionPath };
