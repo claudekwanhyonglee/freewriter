@@ -6,15 +6,17 @@ const editor = (page) => page.locator('#editor');
 /**
  * Puts the caret at the start of the first line of text beginning with `line`, and waits for the
  * editor to pick it up. Set directly: arrow keys faster than any typist overtake the editor's caret.
+ * The editor reads the caret on `selectionchange`, and its listener was added first, so it has the
+ * new caret by the time ours runs.
  * Not for the document's first line: the editor puts a caret set there by script back where it was.
  */
 async function caretBefore(page, line) {
-  await page.evaluate((line) => {
+  await page.evaluate((line) => new Promise((done) => {
+    document.addEventListener('selectionchange', done, { once: true });
     const walker = document.createTreeWalker(document.getElementById('editor'), NodeFilter.SHOW_TEXT);
     while (walker.nextNode() && !walker.currentNode.data.startsWith(line));
     getSelection().collapse(walker.currentNode, 0);
-  }, line);
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => setTimeout(done))));
+  }), line);
 }
 
 /** Opens `text`, presses Backspace at the start of `line` and types "X" where the caret lands. */
