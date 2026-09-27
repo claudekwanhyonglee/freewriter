@@ -9,6 +9,7 @@ import { InputRule } from '@milkdown/kit/prose/inputrules';
 import { findWrapping } from '@milkdown/kit/prose/transform';
 import { keymap } from '@milkdown/kit/prose/keymap';
 import { slashMenu } from './slash-menu.js';
+import { tables } from './tables.js';
 
 // --- Checklists -------------------------------------------------------------------
 
@@ -160,6 +161,7 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
       ctx.update(remarkStringifyOptionsCtx, (options) => ({ ...options, bullet: '-', rule: '-' }));
     })
     .use(slashMenu) // first, so its keys win over the presets' while the menu is open
+    .use(tables) // before gfm, whose Tab would otherwise stop at the last cell
     .use(commonmark)
     .use(untitledImages)
     .use(gfm)

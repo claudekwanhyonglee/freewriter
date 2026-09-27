@@ -104,6 +104,32 @@ html, body {
   background: var(--line);
 }
 
+.table-handle {
+  position: fixed;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  opacity: 0.6;
+  font: 14px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.table-handle:hover {
+  opacity: 1;
+  background: var(--panel);
+}
+
+.table-handle[hidden] {
+  display: none;
+}
+
 #sidebar {
   position: fixed;
   inset: 0 0 0 auto;

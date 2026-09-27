@@ -3,21 +3,33 @@ import {
   wrapInHeadingCommand, wrapInBulletListCommand, wrapInOrderedListCommand,
   wrapInBlockquoteCommand, insertHrCommand, createCodeBlockCommand, listItemSchema,
 } from '@milkdown/kit/preset/commonmark';
-import { insertTableCommand } from '@milkdown/kit/preset/gfm';
 import { $prose } from '@milkdown/kit/utils';
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state';
+import { insertTable } from './tables.js';
+
+const call = (command, payload) => (ctx) => ctx.get(commandsCtx).call(command.key, payload);
+
+function checklist(ctx, view) {
+  call(wrapInBulletListCommand)(ctx);
+  const { $head } = view.state.selection;
+  for (let depth = $head.depth; depth > 0; depth--) {
+    if ($head.node(depth).type !== listItemSchema.type(ctx)) continue;
+    view.dispatch(view.state.tr.setNodeAttribute($head.before(depth), 'checked', false));
+    return;
+  }
+}
 
 const ITEMS = [
-  { label: 'Table', command: [insertTableCommand, { row: 2, col: 2 }] },
-  { label: 'Heading 1', command: [wrapInHeadingCommand, 1] },
-  { label: 'Heading 2', command: [wrapInHeadingCommand, 2] },
-  { label: 'Heading 3', command: [wrapInHeadingCommand, 3] },
-  { label: 'Bullet list', command: [wrapInBulletListCommand] },
-  { label: 'Numbered list', command: [wrapInOrderedListCommand] },
-  { label: 'Checklist', command: [wrapInBulletListCommand], checklist: true },
-  { label: 'Quote', command: [wrapInBlockquoteCommand] },
-  { label: 'Divider', command: [insertHrCommand] },
-  { label: 'Code block', command: [createCodeBlockCommand] },
+  { label: 'Table', run: insertTable },
+  { label: 'Heading 1', run: call(wrapInHeadingCommand, 1) },
+  { label: 'Heading 2', run: call(wrapInHeadingCommand, 2) },
+  { label: 'Heading 3', run: call(wrapInHeadingCommand, 3) },
+  { label: 'Bullet list', run: call(wrapInBulletListCommand) },
+  { label: 'Numbered list', run: call(wrapInOrderedListCommand) },
+  { label: 'Checklist', run: checklist },
+  { label: 'Quote', run: call(wrapInBlockquoteCommand) },
+  { label: 'Divider', run: call(insertHrCommand) },
+  { label: 'Code block', run: call(createCodeBlockCommand) },
 ];
 
 const matching = (query) => ITEMS.filter(({ label }) => label.toLowerCase().replace(/\s/g, '').includes(query.toLowerCase()));
@@ -50,15 +62,6 @@ function openOnSlash(view, from, to, text) {
   if (before && !/\s$/.test(before)) return false;
   view.dispatch(view.state.tr.insertText('/', from, to).setMeta(key, { slash: from, query: '' }));
   return true;
-}
-
-function markAsChecklist(view, ctx) {
-  const { $head } = view.state.selection;
-  for (let depth = $head.depth; depth > 0; depth--) {
-    if ($head.node(depth).type !== listItemSchema.type(ctx)) continue;
-    view.dispatch(view.state.tr.setNodeAttribute($head.before(depth), 'checked', false));
-    return;
-  }
 }
 
 /** The list of blocks, drawn under the caret while the menu is open. */
@@ -111,9 +114,7 @@ class MenuView {
     const { slash } = key.getState(this.view.state);
     const { state } = this.view;
     this.view.dispatch(state.tr.delete(slash, state.selection.head).setMeta(key, null));
-    const [command, payload] = item.command;
-    this.ctx.get(commandsCtx).call(command.key, payload);
-    if (item.checklist) markAsChecklist(this.view, this.ctx);
+    item.run(this.ctx, this.view);
     this.view.focus();
   }
 
