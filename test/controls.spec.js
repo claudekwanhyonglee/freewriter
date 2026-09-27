@@ -21,7 +21,7 @@ test('#5 AC1: moving the mouse reveals a faint row of buttons in a corner', asyn
     const el = document.getElementById('controls');
     return { opacity: parseFloat(getComputedStyle(el).opacity), rect: el.getBoundingClientRect().toJSON(), width: innerWidth };
   });
-  expect(opacity).toBeLessThan(0.6);
+  expect(opacity).toBeLessThan(1); // "faint"; #9 AC2 raised the floor to 0.6
   expect(rect.top).toBeLessThan(40);
   expect(width - rect.right).toBeLessThan(40);
 });
@@ -56,7 +56,7 @@ test('#5 AC2: each button has a tooltip naming its shortcut', async ({ page }) =
     'New session': shortcutLabel('N'),
     'Text smaller': shortcutLabel('-'),
     'Text bigger': shortcutLabel('='),
-    'Fullscreen': 'F11',
+    'Fullscreen': isMac ? '⌃⌘F' : 'F11', // #9 AC3
   };
   for (const [name, shortcut] of Object.entries(expected)) {
     expect(await button(page, name).getAttribute('title')).toContain(shortcut);
@@ -151,4 +151,57 @@ test('#5 AC5: the fullscreen button toggles fullscreen', async ({ app, page }) =
   await page.mouse.move(310, 310, { steps: 5 });
   await button(page, 'Fullscreen').click();
   await expect.poll(() => isFullScreen(app)).toBe(false);
+});
+
+// --- #9 Controls polish ---------------------------------------------------------
+
+const fullscreenKey = isMac ? 'Control+Meta+f' : 'F11';
+const controlsOpacity = (page) => page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('controls')).opacity));
+
+test('#9 AC1: controls stay visible while the pointer rests on them', async ({ page }) => {
+  await page.mouse.move(300, 300, { steps: 5 });
+  const box = await button(page, 'Sessions').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+  await page.waitForTimeout(3500);
+  await expect(controls(page)).toBeVisible();
+  expect(await controlsOpacity(page)).toBeGreaterThanOrEqual(0.6);
+
+  await page.mouse.move(300, 300, { steps: 5 }); // leaving starts the usual fade
+  await expect(controls(page)).toBeHidden({ timeout: 3500 });
+});
+
+test('#9 AC2: shown controls rest at an opacity of at least 0.6', async ({ page }) => {
+  await page.mouse.move(300, 300, { steps: 5 });
+  await expect(controls(page)).toBeVisible();
+  await page.waitForTimeout(500); // past the fade-in transition
+  expect(await controlsOpacity(page)).toBeGreaterThanOrEqual(0.6);
+});
+
+test(`#9 AC3: ${fullscreenKey} toggles fullscreen and the button tooltip shows it`, async ({ app, page }) => {
+  await page.mouse.move(300, 300, { steps: 5 });
+  expect(await button(page, 'Fullscreen').getAttribute('title')).toContain(isMac ? '⌃⌘F' : 'F11');
+  await page.keyboard.press(fullscreenKey);
+  await expect.poll(() => isFullScreen(app)).toBe(true);
+  await page.keyboard.press(fullscreenKey);
+  await expect.poll(() => isFullScreen(app)).toBe(false);
+});
+
+test('#9 AC4: the sessions sidebar opens from the right edge', async ({ page }) => {
+  await page.keyboard.press(`${mod}+o`);
+  await expect(page.locator('#sidebar')).toBeVisible();
+  const { left, right, width } = await page.evaluate(() => ({
+    ...document.getElementById('sidebar').getBoundingClientRect().toJSON(),
+    width: innerWidth,
+  }));
+  expect(right).toBe(width);
+  expect(left).toBeGreaterThan(width / 2);
+});
+
+test('#9 AC4: with the sidebar open, the controls stay on top and can close it', async ({ page }) => {
+  await page.mouse.move(300, 300, { steps: 5 });
+  await button(page, 'Sessions').click();
+  await expect(page.locator('#sidebar')).toBeVisible();
+  await button(page, 'Sessions').click({ trial: true }); // throws if the sidebar covers the button
+  await button(page, 'Sessions').click();
+  await expect(page.locator('#sidebar')).toBeHidden();
 });

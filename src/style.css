@@ -41,11 +41,11 @@ html, body {
 
 #sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0 0 0 auto;
   width: min(22rem, 85vw);
   overflow-y: auto;
   background: var(--panel);
-  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
   font: 15px/1.4 system-ui, sans-serif;
 }
 
@@ -56,7 +56,7 @@ html, body {
 #session-list {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 0;
+  padding: 3.25rem 0 0.5rem; /* clear of the controls above it */
 }
 
 #session-list button {
@@ -94,6 +94,7 @@ html, body {
   position: fixed;
   top: 0.75rem;
   right: 0.75rem;
+  z-index: 1; /* above the sidebar, which opens on the same side */
   display: flex;
   gap: 0.25rem;
   opacity: 0;
@@ -102,13 +103,13 @@ html, body {
 }
 
 #controls.shown {
-  opacity: 0.35;
+  opacity: 0.65;
   visibility: visible;
   transition: opacity 0.15s, visibility 0s;
 }
 
 #controls.shown:hover {
-  opacity: 0.8;
+  opacity: 0.9;
 }
 
 #controls button {

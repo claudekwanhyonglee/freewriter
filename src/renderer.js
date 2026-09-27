@@ -86,6 +86,8 @@ const plainShortcuts = { F11: 'toggleFullscreen' };
 function shortcutAction(event) {
   const modifier = isMac ? event.metaKey : event.ctrlKey;
   if (event.altKey) return null;
+  // macOS reserves F11, so fullscreen is Ctrl+Cmd+F there.
+  if (isMac && event.ctrlKey && event.metaKey && event.key.toLowerCase() === 'f') return 'toggleFullscreen';
   return modifier ? modifiedShortcuts[event.key.toLowerCase()] : plainShortcuts[event.key];
 }
 
@@ -99,8 +101,8 @@ function handleShortcuts() {
 }
 
 function shortcutLabel(button) {
-  const { shortcut, key } = button.dataset;
-  if (key) return key;
+  const { shortcut, key, macKey } = button.dataset;
+  if (key) return (isMac && macKey) || key;
   return isMac ? `⌘${shortcut}` : `Ctrl+${shortcut}`;
 }
 
@@ -125,10 +127,12 @@ function showControlsOnMouseMove() {
     clearTimeout(fadeTimer);
     controls.classList.remove('shown');
   };
+  // A pointer resting on the controls keeps them; moving off them fires mousemove and restarts the fade.
+  const fadeUnlessHovered = () => { if (!controls.matches(':hover')) hide(); };
   onRealMouseMove(() => {
     controls.classList.add('shown');
     clearTimeout(fadeTimer);
-    fadeTimer = setTimeout(hide, CONTROLS_LINGER_MS);
+    fadeTimer = setTimeout(fadeUnlessHovered, CONTROLS_LINGER_MS);
   });
   editor.addEventListener('keydown', hide);
 }
