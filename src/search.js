@@ -22,11 +22,14 @@ function firstLineWith(terms, lines) {
 function sessionSearch(dir) {
   const index = new MiniSearch({ fields: ['text'] });
   const texts = new Map(); // name → the plain text indexed for it, needed to remove it again
+  // The words of the last query and what each matched: typing the next letter reuses all but the last word.
+  let wordMatches = new Map();
 
   function remove(name) {
     if (!texts.has(name)) return;
     index.remove({ id: name, text: texts.get(name) });
     texts.delete(name);
+    wordMatches = new Map();
   }
 
   function update(name, markdown) {
@@ -35,6 +38,7 @@ function sessionSearch(dir) {
     remove(name);
     texts.set(name, text);
     index.add({ id: name, text });
+    wordMatches = new Map();
   }
 
   async function build() {
@@ -55,18 +59,44 @@ function sessionSearch(dir) {
   const isKnown = (term) => !index._index.atPrefix(term).keys().next().done;
 
   /**
-   * The best MAX_RESULTS sessions holding every word of `query`, best first. A word some session has, whole or as the
-   * start of a longer word, matches just that; any other word is a typo and matches words 1 letter
-   * off, 2 for words of 8+ letters.
+   * Sessions matching one query word, by name. A word some session has, whole or as the start of a
+   * longer word, matches just that; any other word is a typo and matches words 1 letter off, 2 for
+   * words of 8+ letters.
    */
-  async function search(query) {
-    await ready;
-    const results = index.search(query, {
-      combineWith: 'AND',
+  function matchWord(word) {
+    const results = index.search(word, {
       prefix: isKnown,
       fuzzy: (term) => !isKnown(term) && (term.length >= 8 ? 2 : 1),
     });
-    return results.slice(0, MAX_RESULTS).map(({ id: name, terms }) => ({
+    return new Map(results.map(({ id, score, terms }) => [id, { score, terms }]));
+  }
+
+  /**
+   * Sessions holding every word, best first: the same ranking as MiniSearch's own AND, whose
+   * score is the sum of the words' scores (times the word count, the same for every result).
+   */
+  function matchAll(words) {
+    wordMatches = new Map(words.map((word) => [word, wordMatches.get(word) ?? matchWord(word)]));
+    const [fewest, ...others] = [...wordMatches.values()].sort((a, b) => a.size - b.size);
+    const results = [];
+    for (const [name, { score, terms }] of fewest) {
+      const alsoMatched = others.map((matches) => matches.get(name));
+      if (alsoMatched.includes(undefined)) continue;
+      results.push({
+        name,
+        score: alsoMatched.reduce((sum, match) => sum + match.score, score),
+        terms: [...new Set([terms, ...alsoMatched.map((match) => match.terms)].flat())],
+      });
+    }
+    return results.sort((a, b) => b.score - a.score);
+  }
+
+  /** The best MAX_RESULTS sessions holding every word of `query` (see matchWord), best first. */
+  async function search(query) {
+    await ready;
+    const words = [...new Set(tokenize(query.toLowerCase()).filter(Boolean))];
+    if (!words.length) return [];
+    return matchAll(words).slice(0, MAX_RESULTS).map(({ name, terms }) => ({
       name,
       label: sessionLabel(name),
       firstLine: firstLineWith(terms, texts.get(name).split('\n')),

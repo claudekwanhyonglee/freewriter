@@ -210,6 +210,8 @@ function centreOn(view, scroller, pos) {
   scroller.scrollTop += (top + bottom) / 2 - scroller.getBoundingClientRect().top - scroller.clientHeight / 2;
 }
 
+const GLOW_MS = 800;
+
 /** A glow over from–to that fades by itself; `scroller` must be positioned so it scrolls along. */
 function glow(view, scroller, { from, to }) {
   const start = view.coordsAtPos(from);
@@ -222,7 +224,9 @@ function glow(view, scroller, { from, to }) {
     width: `${end.right - start.left}px`,
     height: `${start.bottom - start.top}px`,
   });
-  el.addEventListener('animationend', () => el.remove());
+  el.style.animationDuration = `${GLOW_MS}ms`;
+  // A timer, not animationend: animations stall while the window isn't painting, timers don't.
+  setTimeout(() => el.remove(), GLOW_MS);
   scroller.append(el);
 }
 
