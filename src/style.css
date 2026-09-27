@@ -206,7 +206,7 @@ html, body {
   border-radius: 3px;
   background: rgba(230, 180, 60, 0.35);
   box-shadow: 0 0 6px 2px rgba(230, 180, 60, 0.35);
-  animation: glow-fade 0.8s ease-in forwards;
+  animation: glow-fade ease-in forwards; /* duration set with the removal timer, in editor.js */
 }
 
 @keyframes glow-fade {
