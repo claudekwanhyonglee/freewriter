@@ -262,13 +262,16 @@ html, body {
   transition: opacity 0.4s, visibility 0.4s;
 }
 
-#controls.shown {
+/* While the sidebar is open the menu stays, whatever the mouse or keyboard does. */
+#controls.shown,
+body:has(#sidebar:not([hidden])) #controls {
   opacity: 0.65;
   visibility: visible;
   transition: opacity 0.15s, visibility 0s;
 }
 
-#controls.shown:hover {
+#controls.shown:hover,
+body:has(#sidebar:not([hidden])) #controls:hover {
   opacity: 0.9;
 }
 

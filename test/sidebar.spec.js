@@ -145,6 +145,8 @@ test('#12 AC3: deleting the open session switches to a new blank session', async
   const { app, page, dir, trash } = await launchWithSessions();
   await row(page, 'Middle').click();
   await page.keyboard.type(' and more');
+  // Since #31 the sidebar stays open; closing and reopening it refreshes the list.
+  await page.keyboard.press(`${mod}+o`);
   await page.keyboard.press(`${mod}+o`);
   await row(page, 'Middle and more').hover();
   await trashButton(page, 'Middle and more').click();
@@ -160,6 +162,69 @@ test('#12 AC3: deleting the open session switches to a new blank session', async
   expect(files).not.toContain('2025-01-02 08-00-00.md'); // not written back after trashing
   const fresh = files.find((f) => !(f in SESSIONS));
   expect(fs.readFileSync(path.join(dir, fresh), 'utf8')).toBe('Fresh start');
+});
+
+// --- #31 Sidebar browsing ------------------------------------------------------------
+
+const controls = (page) => page.locator('#controls');
+const sidebar = (page) => page.locator('#sidebar');
+
+test('#31 AC1: with the sidebar open, the menu shows without mouse movement, and stays through idle and typing', async ({ page }) => {
+  await page.keyboard.press(`${mod}+o`);
+  await expect(controls(page)).toBeVisible();
+  await page.waitForTimeout(2500);
+  await expect(controls(page)).toBeVisible();
+  await page.keyboard.type('typing away');
+  await page.waitForTimeout(500);
+  await expect(controls(page)).toBeVisible();
+  expect(await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('controls')).opacity))).toBeGreaterThanOrEqual(0.6);
+});
+
+test('#31 AC2: after the sidebar closes, the menu fades after mouse inactivity as before', async ({ page }) => {
+  await page.keyboard.press(`${mod}+o`);
+  await page.mouse.move(300, 300, { steps: 5 });
+  await page.waitForTimeout(2500); // the fade timer has run out while the sidebar held the menu
+  await page.keyboard.press(`${mod}+o`);
+  await expect(sidebar(page)).toBeHidden();
+  await expect(controls(page)).toBeHidden({ timeout: 1500 });
+
+  await page.mouse.move(320, 320, { steps: 5 });
+  await expect(controls(page)).toBeVisible();
+  await page.waitForTimeout(1500);
+  await expect(controls(page)).toBeVisible();
+  await expect(controls(page)).toBeHidden({ timeout: 1500 });
+});
+
+test('#31 AC3: clicking a session loads it and the sidebar stays open', async () => {
+  const { app, page } = await launchWithSessions();
+  await row(page, 'Middle').click();
+  await expect(page.locator('#editor')).toHaveText('Middle');
+  await expect(sidebar(page)).toBeVisible();
+  await row(page, 'Oldest').click();
+  await expect(page.locator('#editor')).toHaveText('Oldest');
+  await expect(sidebar(page)).toBeVisible();
+  await app.close();
+});
+
+test('#31 AC4: clicking the writing area closes the sidebar', async () => {
+  const { app, page } = await launchWithSessions();
+  await row(page, 'Middle').click();
+  await page.mouse.click(100, 400);
+  await expect(sidebar(page)).toBeHidden();
+  await expect(page.locator('#editor')).toBeFocused();
+  await app.close();
+});
+
+test('#31 AC5: the sessions button and "+" still close the sidebar', async ({ page }) => {
+  const button = (name) => page.getByRole('button', { name, exact: true });
+  await page.keyboard.press(`${mod}+o`);
+  await button('Sessions').click();
+  await expect(sidebar(page)).toBeHidden();
+
+  await page.keyboard.press(`${mod}+o`);
+  await expect(sidebar(page)).toBeVisible();
+  await button('New session').click();
+  await expect(sidebar(page)).toBeHidden();
 });
 
 test('#12 AC4: other session files are left untouched', async () => {

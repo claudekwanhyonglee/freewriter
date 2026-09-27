@@ -55,6 +55,7 @@ async function launchWithSession(text, { dir = tempDir('fw-'), userData = tempDi
   const { app, page } = await launch({ dir, userData });
   await page.keyboard.press(`${mod}+o`);
   await page.locator('#sidebar li').first().click();
+  await page.keyboard.press(`${mod}+o`); // since #31 the sidebar stays open after opening a session
   await expect(page.locator('#sidebar')).toBeHidden();
   return { app, page, dir, file: path.join(dir, name) };
 }

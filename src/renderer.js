@@ -80,8 +80,12 @@ async function toggleSidebar() {
 async function openSession(name) {
   saveNow();
   const text = await api.openSession(name);
-  sidebar.hidden = true;
-  showInEditor(text);
+  showInEditor(text); // the sidebar stays open, to click through sessions
+}
+
+/** A click in the writing area closes the sidebar; the click still lands in the editor. */
+function closeSidebarOnWritingAreaClick() {
+  document.getElementById('page').addEventListener('mousedown', () => { sidebar.hidden = true; });
 }
 
 async function deleteSession(name, item) {
@@ -260,6 +264,7 @@ handleShortcuts();
 exitFullscreenOnEscape();
 zoomWithModifierWheel();
 setUpControls();
+closeSidebarOnWritingAreaClick();
 showControlsOnMouseMove();
 hideCursorWhileTyping();
 focusEditor();
