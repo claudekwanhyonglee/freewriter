@@ -1,17 +1,27 @@
 {
   "name": "freewriter",
+  "productName": "Freewriter",
   "version": "0.1.0",
   "description": "A minimalist desktop app for freewriting",
   "main": "src/main.js",
   "author": "claudekwanhyonglee",
-  "license": "MIT",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "playwright test"
+    "test": "playwright test --grep-invert @dist",
+    "test:dist": "playwright test --grep @dist",
+    "dist": "electron-builder --publish never"
+  },
+  "build": {
+    "appId": "com.claudekwanhyonglee.freewriter",
+    "files": ["src/**/*", "package.json"],
+    "win": { "target": "nsis" },
+    "mac": { "target": "dmg", "category": "public.app-category.productivity" },
+    "linux": { "target": "AppImage", "category": "Office" }
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "electron": "^44.4.5"
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
   }
 }
