@@ -1,5 +1,8 @@
-const { app, BrowserWindow, Menu, nativeTheme } = require('electron');
+const { app, BrowserWindow, Menu, nativeTheme, ipcMain } = require('electron');
 const path = require('path');
+const { Session, sessionsDir } = require('./sessions');
+
+let session;
 
 function setMenu() {
   // macOS needs an app/edit menu for Cmd+C/V/Z/Q; it lives in the global menu bar, not the window.
@@ -25,8 +28,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  session = new Session(sessionsDir(app.getPath('documents')));
+  ipcMain.on('text-changed', (_event, text) => session.update(text));
   setMenu();
   createWindow();
 });
 
+app.on('before-quit', () => session?.flush());
 app.on('window-all-closed', () => app.quit());

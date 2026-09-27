@@ -9,10 +9,12 @@ function tempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
-async function launch({ dir, userData }) {
+async function launch({ dir, userData, env = {} }) {
+  const fullEnv = { ...process.env, FREEWRITER_DIR: dir, ...env };
+  if (dir === undefined) delete fullEnv.FREEWRITER_DIR;
   const app = await _electron.launch({
     args: ['.', '--no-sandbox', `--user-data-dir=${userData}`],
-    env: { ...process.env, FREEWRITER_DIR: dir },
+    env: fullEnv,
   });
   const page = await app.firstWindow();
   await page.waitForSelector('#editor');

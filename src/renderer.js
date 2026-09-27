@@ -5,5 +5,10 @@ function hideCursorWhileTyping() {
   document.addEventListener('mousemove', () => document.body.classList.remove('typing'));
 }
 
+function autosave() {
+  editor.addEventListener('input', () => window.freewriter.textChanged(editor.value));
+}
+
 hideCursorWhileTyping();
+autosave();
 editor.focus();
