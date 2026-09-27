@@ -80,10 +80,16 @@ function handleSessionMessages() {
   ipcMain.on('get-sessions-dir-url', (event) => { event.returnValue = `${pathToFileURL(session.dir).href}/`; });
 }
 
+/** The settings the renderer may save, and what a valid value looks like. */
+const SETTINGS = {
+  fontSize: Number.isFinite,
+  font: (value) => typeof value === 'string' && value.length < 100,
+};
+
 function handleViewMessages(settings) {
-  ipcMain.on('get-font-size', (event) => { event.returnValue = settings.get('fontSize') ?? null; });
-  ipcMain.on('set-font-size', (_event, size) => {
-    if (Number.isFinite(size)) settings.set('fontSize', size);
+  ipcMain.on('get-setting', (event, key) => { event.returnValue = settings.get(key) ?? null; });
+  ipcMain.on('set-setting', (_event, key, value) => {
+    if (SETTINGS[key]?.(value)) settings.set(key, value);
   });
   ipcMain.on('toggle-fullscreen', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);

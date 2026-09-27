@@ -114,9 +114,51 @@ function zoomWithModifierWheel() {
   }, { passive: false });
 }
 
+// --- Font ---------------------------------------------------------------------
+
+// Bundled in fonts/ (see fonts.css); the first is the default.
+const FONTS = ['Literata', 'Source Serif 4', 'EB Garamond', 'Inter', 'Atkinson Hyperlegible', 'iA Writer Mono'];
+const fontList = document.getElementById('font-list');
+const fontButton = controls.querySelector('[data-action="toggleFontList"]');
+
+function setFont(font, { save = true } = {}) {
+  document.documentElement.style.setProperty('--prose-font', `"${font}"`);
+  if (save) api.saveFont(font);
+}
+
+function showFontList(shown) {
+  fontList.hidden = !shown;
+  fontButton.setAttribute('aria-expanded', String(shown));
+}
+
+const closeFontList = () => showFontList(false);
+const toggleFontList = () => showFontList(fontList.hidden);
+
+function fontOption(font) {
+  const option = Object.assign(document.createElement('li'), { textContent: font });
+  option.setAttribute('role', 'option');
+  option.style.fontFamily = `"${font}"`;
+  option.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the editor
+  option.addEventListener('click', () => {
+    setFont(font);
+    closeFontList();
+  });
+  return option;
+}
+
+function setUpFontList() {
+  fontList.replaceChildren(...FONTS.map(fontOption));
+  document.addEventListener('mousedown', (event) => {
+    if (!fontList.hidden && !event.target.closest('#font-list, .font-button')) closeFontList();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !fontList.hidden) closeFontList();
+  });
+}
+
 // --- Shortcuts and controls ---------------------------------------------------
 
-const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFullscreen: api.toggleFullscreen };
+const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFontList, toggleFullscreen: api.toggleFullscreen };
 
 const modifiedShortcuts = { o: 'toggleSidebar', n: 'newSession', '=': 'textBigger', '+': 'textBigger', '-': 'textSmaller', '0': 'textReset' };
 const plainShortcuts = { F11: 'toggleFullscreen' };
@@ -141,12 +183,14 @@ function handleShortcuts() {
 function shortcutLabel(button) {
   const { shortcut, key, macKey } = button.dataset;
   if (key) return (isMac && macKey) || key;
+  if (!shortcut) return null;
   return isMac ? `⌘${shortcut}` : `Ctrl+${shortcut}`;
 }
 
 function setUpControls() {
   for (const button of controls.querySelectorAll('button')) {
-    button.title = `${button.getAttribute('aria-label')} (${shortcutLabel(button)})`;
+    const shortcut = shortcutLabel(button);
+    button.title = button.getAttribute('aria-label') + (shortcut ? ` (${shortcut})` : '');
     button.addEventListener('mousedown', (event) => event.preventDefault()); // keep focus in the editor
     button.addEventListener('click', () => actions[button.dataset.action]());
   }
@@ -164,6 +208,7 @@ function showControlsOnMouseMove() {
   const hide = () => {
     clearTimeout(fadeTimer);
     controls.classList.remove('shown');
+    closeFontList();
   };
   // A pointer resting on the controls keeps them; moving off them fires mousemove and restarts the fade.
   const fadeUnlessHovered = () => { if (!controls.matches(':hover')) hide(); };
@@ -181,6 +226,8 @@ function hideCursorWhileTyping() {
 }
 
 setTextSize(textSize, { save: false });
+setFont(FONTS.includes(api.savedFont) ? api.savedFont : FONTS[0], { save: false });
+setUpFontList();
 handleShortcuts();
 zoomWithModifierWheel();
 setUpControls();

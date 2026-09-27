@@ -8,9 +8,11 @@ contextBridge.exposeInMainWorld('freewriter', {
   openSession: (name) => ipcRenderer.invoke('open-session', name),
   newSession: () => ipcRenderer.invoke('new-session'),
   deleteSession: (name) => ipcRenderer.invoke('delete-session', name),
-  // Read synchronously so the first paint already uses the saved size.
-  savedFontSize: ipcRenderer.sendSync('get-font-size'),
-  saveFontSize: (size) => ipcRenderer.send('set-font-size', size),
+  // Read synchronously so the first paint already uses the saved size and font.
+  savedFontSize: ipcRenderer.sendSync('get-setting', 'fontSize'),
+  saveFontSize: (size) => ipcRenderer.send('set-setting', 'fontSize', size),
+  savedFont: ipcRenderer.sendSync('get-setting', 'font'),
+  saveFont: (font) => ipcRenderer.send('set-setting', 'font', font),
   toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
   openLink: (url) => ipcRenderer.send('open-link', url),
   sessionsDirUrl: ipcRenderer.sendSync('get-sessions-dir-url'),
