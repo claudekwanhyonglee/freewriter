@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Menu, nativeTheme, ipcMain } = require('electron');
+const fs = require('fs');
 const path = require('path');
-const { Session, sessionsDir } = require('./sessions');
+const { Session, sessionsDir, listSessions, sessionPath } = require('./sessions');
 
 let session;
 
@@ -27,9 +28,28 @@ function createWindow() {
   return win;
 }
 
+function switchSession(file = null) {
+  session.flush();
+  session = new Session(session.dir, file);
+}
+
+function handleSessionMessages() {
+  ipcMain.on('text-changed', (_event, text) => session.update(text));
+  ipcMain.handle('list-sessions', () => {
+    session.flush();
+    return listSessions(session.dir);
+  });
+  ipcMain.handle('open-session', (_event, name) => {
+    const file = sessionPath(session.dir, name);
+    switchSession(file);
+    return fs.readFileSync(file, 'utf8');
+  });
+  ipcMain.handle('new-session', () => switchSession());
+}
+
 app.whenReady().then(() => {
   session = new Session(sessionsDir(app.getPath('documents')));
-  ipcMain.on('text-changed', (_event, text) => session.update(text));
+  handleSessionMessages();
   setMenu();
   createWindow();
 });

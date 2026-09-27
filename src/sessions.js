@@ -47,4 +47,33 @@ class Session {
   }
 }
 
-module.exports = { Session, sessionsDir, sessionFileName };
+const SESSION_NAME = /^(\d{4}-\d{2}-\d{2}) (\d{2})-(\d{2})-\d{2}\.md$/;
+
+function sessionLabel(name) {
+  const m = name.match(SESSION_NAME);
+  return m ? `${m[1]} ${m[2]}:${m[3]}` : name.replace(/\.md$/, '');
+}
+
+const firstLine = (text) => text.split('\n').map((line) => line.trim()).find(Boolean) ?? '';
+
+// ponytail: reads every file on each open; fine for years of daily sessions, cache first lines if it ever lags.
+function listSessions(dir) {
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((name) => name.endsWith('.md'))
+    .sort()
+    .reverse()
+    .map((name) => ({
+      name,
+      label: sessionLabel(name),
+      firstLine: firstLine(fs.readFileSync(path.join(dir, name), 'utf8')),
+    }));
+}
+
+/** Resolves a session name from the renderer to a file in dir, refusing anything outside it. */
+function sessionPath(dir, name) {
+  if (path.basename(name) !== name || !name.endsWith('.md')) throw new Error(`Not a session: ${name}`);
+  return path.join(dir, name);
+}
+
+module.exports = { Session, sessionsDir, sessionFileName, listSessions, sessionPath };
