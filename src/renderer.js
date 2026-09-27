@@ -196,6 +196,18 @@ function handleShortcuts() {
   });
 }
 
+const popupOpen = () => Boolean(document.querySelector('#slash-menu:not([hidden]), #font-list:not([hidden])'));
+
+/**
+ * Esc leaves fullscreen, unless it's closing a popup. Checked while capturing, before the popups
+ * close; the editor claims every Esc (for selectParentNode), so defaultPrevented can't tell.
+ */
+function exitFullscreenOnEscape() {
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !popupOpen()) api.exitFullscreen();
+  }, { capture: true });
+}
+
 function shortcutLabel(button) {
   const { shortcut, key, macKey } = button.dataset;
   if (key) return (isMac && macKey) || key;
@@ -245,6 +257,7 @@ setTextSize(textSize, { save: false });
 setFont(FONTS.includes(api.savedFont) ? api.savedFont : FONTS[0], { save: false });
 setUpFontList();
 handleShortcuts();
+exitFullscreenOnEscape();
 zoomWithModifierWheel();
 setUpControls();
 showControlsOnMouseMove();

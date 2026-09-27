@@ -15,7 +15,8 @@ contextBridge.exposeInMainWorld('freewriter', {
   saveFont: (font) => ipcRenderer.send('set-setting', 'font', font),
   savedTheme: ipcRenderer.sendSync('get-setting', 'theme'),
   saveTheme: (theme) => ipcRenderer.send('set-setting', 'theme', theme),
-  toggleFullscreen:() => ipcRenderer.send('toggle-fullscreen'),
+  toggleFullscreen: () => ipcRenderer.send('toggle-fullscreen'),
+  exitFullscreen: () => ipcRenderer.send('exit-fullscreen'),
   openLink: (url) => ipcRenderer.send('open-link', url),
   sessionsDirUrl: ipcRenderer.sendSync('get-sessions-dir-url'),
 });

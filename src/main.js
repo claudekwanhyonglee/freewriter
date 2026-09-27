@@ -105,6 +105,7 @@ function handleViewMessages(settings) {
     const win = BrowserWindow.fromWebContents(event.sender);
     win.setFullScreen(!win.isFullScreen());
   });
+  ipcMain.on('exit-fullscreen', (event) => BrowserWindow.fromWebContents(event.sender).setFullScreen(false));
   ipcMain.on('open-link', (_event, href) => openLink(href));
 }
 
