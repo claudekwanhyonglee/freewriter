@@ -116,8 +116,8 @@ function zoomWithModifierWheel() {
 
 // --- Font ---------------------------------------------------------------------
 
-// Bundled in fonts/ (see fonts.css); the first is the default.
-const FONTS = ['Literata', 'Source Serif 4', 'EB Garamond', 'Inter', 'Atkinson Hyperlegible', 'iA Writer Mono'];
+// Bundled in fonts/ (see fonts.css); listed alphabetically, and the first is the default.
+const FONTS = ['Atkinson Hyperlegible', 'EB Garamond', 'iA Writer Mono', 'Inter', 'Literata', 'Source Serif 4'];
 const fontList = document.getElementById('font-list');
 const fontButton = controls.querySelector('[data-action="toggleFontList"]');
 

@@ -47,7 +47,7 @@ html, body {
   background: transparent;
   color: var(--text);
   caret-color: var(--text);
-  font: var(--font-size)/1.6 var(--prose-font, "Literata"), Georgia, serif;
+  font: var(--font-size)/1.6 var(--prose-font, "Atkinson Hyperlegible"), Georgia, serif;
   /* What prosemirror-view/style/prosemirror.css asks for. */
   white-space: pre-wrap;
   word-wrap: break-word;

@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect, launch, launchWithSession, tempDir } = require('./fixture');
 
-const FONTS = ['Literata', 'Source Serif 4', 'EB Garamond', 'Inter', 'Atkinson Hyperlegible', 'iA Writer Mono'];
+// #24 AC1: alphabetical, Atkinson Hyperlegible first and the default.
+const FONTS = ['Atkinson Hyperlegible', 'EB Garamond', 'iA Writer Mono', 'Inter', 'Literata', 'Source Serif 4'];
+const DEFAULT_FONT = 'Atkinson Hyperlegible';
 
 const fontButton = (page) => page.getByRole('button', { name: 'Font', exact: true });
 const fontList = (page) => page.locator('#font-list');
@@ -46,21 +48,21 @@ test('#13 AC2: Esc closes the list without changing the font', async ({ page }) 
   await fontOption(page, 'Inter').hover();
   await page.keyboard.press('Escape');
   await expect(fontList(page)).toBeHidden();
-  expect(await primaryFont(page.locator('#editor'))).toBe('Literata');
+  expect(await primaryFont(page.locator('#editor'))).toBe(DEFAULT_FONT);
 });
 
 test('#13 AC2: clicking outside closes the list without changing the font', async ({ page }) => {
   await openFontList(page);
   await page.mouse.click(200, 400);
   await expect(fontList(page)).toBeHidden();
-  expect(await primaryFont(page.locator('#editor'))).toBe('Literata');
+  expect(await primaryFont(page.locator('#editor'))).toBe(DEFAULT_FONT);
 });
 
-test('#13 AC3: the font is Literata by default and the chosen font persists across restarts', async () => {
+test('#13 AC3 / #24 AC2: the font is Atkinson Hyperlegible by default and the chosen font persists across restarts', async () => {
   const dir = tempDir('fw-');
   const userData = tempDir('fw-');
   const first = await launch({ dir, userData });
-  expect(await primaryFont(first.page.locator('#editor'))).toBe('Literata');
+  expect(await primaryFont(first.page.locator('#editor'))).toBe(DEFAULT_FONT);
   await openFontList(first.page);
   await fontOption(first.page, 'EB Garamond').click();
   await first.app.close();
@@ -87,4 +89,29 @@ test('#13 AC4: all six fonts are bundled with their licences and load without th
   for (const name of FONTS) expect(fs.existsSync(path.join(fontsDir, `${name.replace(/ /g, '')}-LICENSE.txt`))).toBe(true);
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'fonts.css'), 'utf8');
   expect(css).not.toMatch(/url\(\s*['"]?(https?:)?\/\//); // nothing fetched from the web
+});
+
+test('#24 AC1: the font list is alphabetical', async ({ page }) => {
+  await openFontList(page);
+  await expect(fontList(page).getByRole('option')).toHaveText([
+    'Atkinson Hyperlegible', 'EB Garamond', 'iA Writer Mono', 'Inter', 'Literata', 'Source Serif 4',
+  ]);
+});
+
+test('#24 AC2: with no saved choice the font is Atkinson Hyperlegible', async ({ page }) => {
+  expect(await primaryFont(page.locator('#editor'))).toBe('Atkinson Hyperlegible');
+});
+
+test('#24 AC3: a saved Literata still applies after a restart', async () => {
+  const dir = tempDir('fw-');
+  const userData = tempDir('fw-');
+  const first = await launch({ dir, userData });
+  await openFontList(first.page);
+  await fontOption(first.page, 'Literata').click();
+  expect(await primaryFont(first.page.locator('#editor'))).toBe('Literata');
+  await first.app.close();
+
+  const second = await launch({ dir, userData });
+  expect(await primaryFont(second.page.locator('#editor'))).toBe('Literata');
+  await second.app.close();
 });
