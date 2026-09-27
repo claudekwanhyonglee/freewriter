@@ -203,22 +203,21 @@ test('#14 AC6: formatted text autosaves as markdown and shows in the sidebar', a
   await expect(page.locator('#sidebar .preview')).toHaveText(['Morning']);
 });
 
-test('#14 AC6: a long session opens scrolled to the end, and typing past the bottom keeps the caret in view', async () => {
+// #21 AC1–AC2: no OS navigation keys; the caret opens at the end, which is where the typing goes.
+test('#14 AC6 / #21 AC1–AC2: a long session opens scrolled to the end, and typing past the bottom keeps the caret in view', async () => {
   const { app, page } = await launchWithSession(Array.from({ length: 80 }, (_, i) => `Paragraph ${i}`).join('\n\n'));
   const caretInView = () => page.evaluate(() => {
     const caret = getSelection().getRangeAt(0).getBoundingClientRect();
     return caret.bottom > 0 && caret.bottom <= innerHeight;
   });
   await expect(editor(page).locator('p').last()).toBeInViewport();
-  expect(await caretInView()).toBe(true);
+  await expect(editor(page).locator('p').first()).not.toBeInViewport();
+  await expect.poll(caretInView).toBe(true);
 
-  const isMac = process.platform === 'darwin'; // macOS jumps to the top/bottom with Cmd+↑/↓, not Home/End
-  await page.keyboard.press(isMac ? 'Meta+ArrowUp' : 'Control+Home');
-  await expect(editor(page).locator('p').first()).toBeInViewport();
-  await page.keyboard.press(isMac ? 'Meta+ArrowDown' : 'Control+End');
   for (let i = 0; i < 30; i++) await page.keyboard.press('Enter');
   await page.keyboard.type('Still visible');
-  expect(await caretInView()).toBe(true);
+  await expect(editor(page).locator('p').last()).toHaveText('Still visible');
+  await expect.poll(caretInView).toBe(true);
   await app.close();
 });
 

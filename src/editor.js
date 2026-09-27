@@ -1,13 +1,16 @@
 import { Editor, rootCtx, editorViewOptionsCtx, editorViewCtx, serializerCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
-import { commonmark, codeBlockSchema, listItemSchema, bulletListSchema, imageSchema } from '@milkdown/kit/preset/commonmark';
+import {
+  commonmark, codeBlockSchema, listItemSchema, bulletListSchema, imageSchema, headingSchema, paragraphSchema, blockquoteSchema,
+} from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
 import { clipboard } from '@milkdown/kit/plugin/clipboard';
 import { $prose, $inputRule, $view, replaceAll } from '@milkdown/kit/utils';
 import { Plugin, Selection } from '@milkdown/kit/prose/state';
 import { InputRule } from '@milkdown/kit/prose/inputrules';
-import { findWrapping } from '@milkdown/kit/prose/transform';
+import { findWrapping, liftTarget } from '@milkdown/kit/prose/transform';
 import { keymap } from '@milkdown/kit/prose/keymap';
+import { chainCommands } from '@milkdown/kit/prose/commands';
 import { slashMenu } from './slash-menu.js';
 import { tables } from './tables.js';
 import { starter } from './starter.js';
@@ -55,6 +58,45 @@ const listItemView = $view(listItemSchema.node, () => (node, view, getPos) => {
     stopEvent: (event) => event.target === box,
   };
 });
+
+/** Deletes an empty checklist item below another item; the caret goes to the end of the one above. */
+function removeEmptyChecklistItem(state, dispatch) {
+  const { $from, empty } = state.selection;
+  const item = $from.node(-1);
+  const isEmptyChecklistItem = empty && $from.parent.content.size === 0 && item?.attrs.checked != null && item.childCount === 1;
+  if (!isEmptyChecklistItem || $from.index(-2) === 0) return false;
+  const tr = state.tr.delete($from.before(-1), $from.after(-1));
+  dispatch?.(tr.setSelection(Selection.near(tr.doc.resolve($from.before(-1)), -1)).scrollIntoView());
+  return true;
+}
+
+// --- Backspace --------------------------------------------------------------------
+
+const caretAtBlockStart = ({ selection: { $from, empty } }) => empty && $from.parentOffset === 0;
+
+/** At the start of a heading, makes it a normal line (instead of merging or dropping a level). */
+const headingToParagraph = (ctx) => (state, dispatch) => {
+  const { $from } = state.selection;
+  if (!caretAtBlockStart(state) || $from.parent.type !== headingSchema.type(ctx)) return false;
+  dispatch?.(state.tr.setBlockType($from.before(), $from.after(), paragraphSchema.type(ctx)));
+  return true;
+};
+
+/** At the start of a quote line, moves just that line out of the quote. */
+const liftOutOfQuote = (ctx) => (state, dispatch) => {
+  const { $from } = state.selection;
+  if (!caretAtBlockStart(state) || $from.node(-1)?.type !== blockquoteSchema.type(ctx)) return false;
+  const range = $from.blockRange();
+  const target = range && liftTarget(range);
+  if (target == null) return false;
+  dispatch?.(state.tr.lift(range, target).scrollIntoView());
+  return true;
+};
+
+/** Backspace overrides; used before the presets so these win over their Backspace bindings. */
+const backspace = $prose((ctx) => keymap({
+  Backspace: chainCommands(removeEmptyChecklistItem, headingToParagraph(ctx), liftOutOfQuote(ctx)),
+}));
 
 // --- Images -----------------------------------------------------------------------
 
@@ -163,6 +205,7 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
     })
     .use(slashMenu) // first, so its keys win over the presets' while the menu is open
     .use(tables) // before gfm, whose Tab would otherwise stop at the last cell
+    .use(backspace)
     .use(commonmark)
     .use(untitledImages)
     .use(gfm)
