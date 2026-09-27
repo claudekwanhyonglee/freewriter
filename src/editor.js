@@ -8,6 +8,7 @@ import { Plugin, Selection } from '@milkdown/kit/prose/state';
 import { InputRule } from '@milkdown/kit/prose/inputrules';
 import { findWrapping } from '@milkdown/kit/prose/transform';
 import { keymap } from '@milkdown/kit/prose/keymap';
+import { slashMenu } from './slash-menu.js';
 
 // --- Checklists -------------------------------------------------------------------
 
@@ -158,6 +159,7 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
       // `- item`, `- [ ] task` and `---`, as people write them by hand.
       ctx.update(remarkStringifyOptionsCtx, (options) => ({ ...options, bullet: '-', rule: '-' }));
     })
+    .use(slashMenu) // first, so its keys win over the presets' while the menu is open
     .use(commonmark)
     .use(untitledImages)
     .use(gfm)
