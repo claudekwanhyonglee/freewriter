@@ -1,4 +1,4 @@
-const { test, expect, launch, tempDir } = require('./fixture');
+const { test, expect, launch, tempDir, setOsTheme: setTheme } = require('./fixture');
 
 const rgb = (css) => css.match(/\d+/g).slice(0, 3).map(Number);
 
@@ -7,13 +7,6 @@ async function colours(page) {
     background: getComputedStyle(document.body).backgroundColor,
     text: getComputedStyle(document.getElementById('editor')).color,
   }));
-}
-
-// Emulates the OS setting as Chromium sees it; nativeTheme.themeSource doesn't reach headless Xvfb.
-async function setTheme(page, theme) {
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
-  await expect.poll(() => page.evaluate((t) => matchMedia(`(prefers-color-scheme: ${t})`).matches, theme)).toBe(true);
 }
 
 test('#2 AC1: window shows within 2 s with a focused, empty editor that accepts typing', async () => {

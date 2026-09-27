@@ -28,13 +28,20 @@ function openLink(href) {
   if (url && EXTERNAL_PROTOCOLS.includes(url.protocol)) shell.openExternal(url.href);
 }
 
+const BACKGROUNDS = { light: '#f7f3ea', dark: '#1e1e1e' };
+
+/** A saved theme also sets the native one, so the title bar and first paint agree with the page. */
+function applyTheme(theme) {
+  if (theme) nativeTheme.themeSource = theme;
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1000,
     height: 750,
     show: false,
     autoHideMenuBar: true,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f7f3ea',
+    backgroundColor: BACKGROUNDS[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'],
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
   });
   win.setMenuBarVisibility(false);
@@ -84,12 +91,15 @@ function handleSessionMessages() {
 const SETTINGS = {
   fontSize: Number.isFinite,
   font: (value) => typeof value === 'string' && value.length < 100,
+  theme: (value) => Object.hasOwn(BACKGROUNDS, value),
 };
 
 function handleViewMessages(settings) {
   ipcMain.on('get-setting', (event, key) => { event.returnValue = settings.get(key) ?? null; });
   ipcMain.on('set-setting', (_event, key, value) => {
-    if (SETTINGS[key]?.(value)) settings.set(key, value);
+    if (!SETTINGS[key]?.(value)) return;
+    settings.set(key, value);
+    if (key === 'theme') applyTheme(value);
   });
   ipcMain.on('toggle-fullscreen', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -101,7 +111,9 @@ function handleViewMessages(settings) {
 app.whenReady().then(() => {
   session = new Session(sessionsDir(app.getPath('documents')));
   handleSessionMessages();
-  handleViewMessages(settingsStore(app.getPath('userData')));
+  const settings = settingsStore(app.getPath('userData'));
+  handleViewMessages(settings);
+  applyTheme(settings.get('theme'));
   setMenu();
   createWindow();
 });

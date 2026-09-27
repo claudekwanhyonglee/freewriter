@@ -9,6 +9,20 @@ const controls = document.getElementById('controls');
 const TEXT_SIZE = { min: 14, max: 40, initial: 22, step: 2 };
 const CONTROLS_LINGER_MS = 2000;
 
+// --- Theme --------------------------------------------------------------------
+
+// Set before anything awaits, so the first paint already has it. Without a saved theme the OS decides.
+const root = document.documentElement;
+if (api.savedTheme) root.dataset.theme = api.savedTheme;
+
+const osTheme = () => (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+function toggleTheme() {
+  const theme = (root.dataset.theme ?? osTheme()) === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = theme;
+  api.saveTheme(theme);
+}
+
 // --- Editor -----------------------------------------------------------------
 
 // Relative image paths in a session resolve against the sessions folder, where the session file lives.
@@ -158,7 +172,9 @@ function setUpFontList() {
 
 // --- Shortcuts and controls ---------------------------------------------------
 
-const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFontList, toggleFullscreen: api.toggleFullscreen };
+const actions = {
+  toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFontList, toggleTheme, toggleFullscreen: api.toggleFullscreen,
+};
 
 const modifiedShortcuts = { o: 'toggleSidebar', n: 'newSession', '=': 'textBigger', '+': 'textBigger', '-': 'textSmaller', '0': 'textReset' };
 const plainShortcuts = { F11: 'toggleFullscreen' };

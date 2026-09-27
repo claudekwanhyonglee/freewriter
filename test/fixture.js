@@ -59,6 +59,13 @@ async function launchWithSession(text, { dir = tempDir('fw-'), userData = tempDi
   return { app, page, dir, file: path.join(dir, name) };
 }
 
+// Emulates the OS setting as Chromium sees it; nativeTheme.themeSource doesn't reach headless Xvfb.
+async function setOsTheme(page, theme) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
+  await expect.poll(() => page.evaluate((t) => matchMedia(`(prefers-color-scheme: ${t})`).matches, theme)).toBe(true);
+}
+
 const test = base.extend({
   dir: async ({}, use) => use(tempDir('fw-sessions-')),
   userData: async ({}, use) => use(tempDir('fw-userdata-')),
@@ -71,4 +78,4 @@ const test = base.extend({
   page: async ({ launched }, use) => use(launched.page),
 });
 
-module.exports = { test, expect, launch, launchWithSession, mod, seed, tempDir };
+module.exports = { test, expect, launch, launchWithSession, mod, seed, setOsTheme, tempDir };
