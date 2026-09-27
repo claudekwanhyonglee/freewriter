@@ -93,7 +93,7 @@ for (const theme of THEMES) {
       return { ours: (el.offsetWidth - el.clientWidth) / 2, chromiumDefault };
     });
     expect(ours).toBeGreaterThan(0);
-    expect(ours).toBeLessThan(chromiumDefault);
+    if (chromiumDefault > 0) expect(ours).toBeLessThan(chromiumDefault); // macOS overlay bars take no width: nothing to be thinner than
 
     // Hidden, the whole strip is background: no track and no buttons are painted.
     await page.waitForTimeout(SETTLE_MS);
