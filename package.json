@@ -1,7 +1,7 @@
 {
   "name": "freewriter",
   "productName": "Freewriter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A minimalist desktop app for freewriting",
   "main": "src/main.js",
   "author": "claudekwanhyonglee",
