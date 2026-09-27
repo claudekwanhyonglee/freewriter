@@ -9,6 +9,28 @@ function tempDir(prefix) {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 }
 
+const CLOSE_TIMEOUT_MS = 10000;
+
+/**
+ * Closes the app, killing it if it hasn't exited in time. On macOS, now and then the app finishes
+ * quitting (will-quit has saved the session) but the process stays alive, held by Playwright's
+ * debugger connection. That never happens outside tests, so a kill loses nothing.
+ */
+function closeOrKill(app) {
+  const close = app.close.bind(app);
+  const proc = app.process();
+  return async () => {
+    const closing = close();
+    let timer;
+    const timedOut = new Promise((resolve) => { timer = setTimeout(() => resolve(true), CLOSE_TIMEOUT_MS); });
+    if (await Promise.race([closing.then(() => false), timedOut])) {
+      proc.kill('SIGKILL');
+      await closing;
+    }
+    clearTimeout(timer);
+  };
+}
+
 async function launch({ dir, userData, env = {} }) {
   const fullEnv = { ...process.env, FREEWRITER_DIR: dir, ...env };
   if (dir === undefined) delete fullEnv.FREEWRITER_DIR;
@@ -16,6 +38,7 @@ async function launch({ dir, userData, env = {} }) {
     args: ['.', '--no-sandbox', `--user-data-dir=${userData}`],
     env: fullEnv,
   });
+  app.close = closeOrKill(app);
   const page = await app.firstWindow();
   await page.waitForSelector('#editor');
   return { app, page };
