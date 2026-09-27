@@ -212,9 +212,10 @@ test('#14 AC6: a long session opens scrolled to the end, and typing past the bot
   await expect(editor(page).locator('p').last()).toBeInViewport();
   expect(await caretInView()).toBe(true);
 
-  await page.keyboard.press(`${mod}+Home`);
+  const isMac = process.platform === 'darwin'; // macOS jumps to the top/bottom with Cmd+↑/↓, not Home/End
+  await page.keyboard.press(isMac ? 'Meta+ArrowUp' : 'Control+Home');
   await expect(editor(page).locator('p').first()).toBeInViewport();
-  await page.keyboard.press(`${mod}+End`);
+  await page.keyboard.press(isMac ? 'Meta+ArrowDown' : 'Control+End');
   for (let i = 0; i < 30; i++) await page.keyboard.press('Enter');
   await page.keyboard.type('Still visible');
   expect(await caretInView()).toBe(true);
