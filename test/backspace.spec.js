@@ -1,0 +1,94 @@
+const fs = require('fs');
+const { test, expect, launchWithSession } = require('./fixture');
+
+const editor = (page) => page.locator('#editor');
+
+/**
+ * Puts the caret at the start of the first line of text beginning with `line`, and waits for the
+ * editor to pick it up. Set directly: arrow keys faster than any typist overtake the editor's caret.
+ * Not for the document's first line: the editor puts a caret set there by script back where it was.
+ */
+async function caretBefore(page, line) {
+  await page.evaluate((line) => {
+    const walker = document.createTreeWalker(document.getElementById('editor'), NodeFilter.SHOW_TEXT);
+    while (walker.nextNode() && !walker.currentNode.data.startsWith(line));
+    getSelection().collapse(walker.currentNode, 0);
+  }, line);
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => setTimeout(done))));
+}
+
+/** Opens `text`, presses Backspace at the start of `line` and types "X" where the caret lands. */
+async function backspaceAt(text, line) {
+  const session = await launchWithSession(text);
+  await caretBefore(session.page, line);
+  await session.page.keyboard.press('Backspace');
+  await session.page.keyboard.type('X');
+  const saved = () => fs.readFileSync(session.file, 'utf8');
+  return { ...session, saved };
+}
+
+// --- AC1: quote lines ---------------------------------------------------------------
+
+test('#23 AC1: Backspace at the start of the last quote line makes it a normal line; the rest stays quoted', async () => {
+  const { app, page, saved } = await backspaceAt('> one\n>\n> two', 'two');
+  await expect(editor(page).locator('blockquote')).toHaveText('one');
+  await expect(editor(page).locator('> p')).toHaveText(['Xtwo']);
+  await expect.poll(saved).toBe('> one\n\nXtwo');
+  await app.close();
+});
+
+test('#23 AC1: Backspace at the start of the first quote line makes it a normal line; the rest stays quoted', async () => {
+  const { app, page, saved } = await backspaceAt('Above\n\n> one\n>\n> two', 'one');
+  await expect(editor(page).locator('> p')).toHaveText(['Above', 'Xone']);
+  await expect(editor(page).locator('blockquote')).toHaveText('two');
+  await expect.poll(saved).toBe('Above\n\nXone\n\n> two');
+  await app.close();
+});
+
+test('#23 AC1: Backspace at the start of a middle quote line makes it a normal line between two quotes', async () => {
+  const { app, page } = await backspaceAt('> one\n>\n> two\n>\n> three', 'two');
+  await expect(editor(page).locator('blockquote')).toHaveText(['one', 'three']);
+  await expect(editor(page).locator('> p')).toHaveText(['Xtwo']);
+  await app.close();
+});
+
+// --- AC2: empty quote ---------------------------------------------------------------
+
+test('#23 AC2: Backspace in an empty quote removes the quote, leaving an empty normal line', async ({ page }) => {
+  await page.keyboard.type('> ');
+  await expect(editor(page).locator('blockquote')).toHaveCount(1);
+  await page.keyboard.press('Backspace');
+  await expect(editor(page).locator('blockquote')).toHaveCount(0);
+  await expect(editor(page).locator('> p')).toHaveText(['']);
+  await page.keyboard.type('plain');
+  await expect(editor(page).locator('> p')).toHaveText(['plain']);
+});
+
+// --- AC3: headings ------------------------------------------------------------------
+
+for (const level of [1, 2, 3]) {
+  test(`#23 AC3: Backspace at the start of an H${level} makes it a normal line, without merging or changing level`, async () => {
+    const { app, page, saved } = await backspaceAt(`Above\n\n${'#'.repeat(level)} Title`, 'Title');
+    await expect(editor(page).locator('h1, h2, h3')).toHaveCount(0);
+    await expect(editor(page).locator('> p')).toHaveText(['Above', 'XTitle']);
+    await expect.poll(saved).toBe('Above\n\nXTitle');
+    await app.close();
+  });
+}
+
+// --- AC4: other blocks keep today's behaviour -----------------------------------------
+
+// What Backspace did before #23: lines and code merge into the block above; list items join the item above.
+for (const { block, text, line, result } of [
+  { block: 'normal line', text: 'Above\n\nBelow', line: 'Below', result: 'AboveXBelow' },
+  { block: 'list item', text: '- one\n- two', line: 'two', result: '- one\n\n  Xtwo' },
+  { block: 'numbered list item', text: '1. one\n2. two', line: 'two', result: '1. one\n\n   Xtwo' },
+  { block: 'first list item', text: 'Above\n\n- one', line: 'one', result: 'Above\n\nXone' },
+  { block: 'code block', text: 'Above\n\n```\ncode\n```', line: 'code', result: 'AboveXcode' },
+]) {
+  test(`#23 AC4: Backspace at the start of a ${block} works as before`, async () => {
+    const { app, saved } = await backspaceAt(text, line);
+    await expect.poll(saved).toBe(result);
+    await app.close();
+  });
+}
