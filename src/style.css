@@ -25,16 +25,21 @@ html, body {
   overflow: hidden;
 }
 
-#page, #page > .milkdown {
+/* The page scrolls, not the editor, so ProseMirror can keep the caret in view. */
+#page {
   height: 100%;
+  overflow-y: auto;
+}
+
+#page > .milkdown {
+  min-height: 100%;
+  display: flex; /* stretches the editor, so a click anywhere below the text lands in it */
 }
 
 #editor {
   display: block;
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
-  overflow-y: auto;
   /* Padding centres a column of at most 65ch at any window width. */
   padding: 12vh max(1.5rem, calc((100% - 65ch) / 2));
   border: 0;

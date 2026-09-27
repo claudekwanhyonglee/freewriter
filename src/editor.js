@@ -179,8 +179,8 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
     load(markdown) {
       editor.action(replaceAll(markdown, true));
       changes.discard();
+      view.focus(); // first: scrolling into view follows the DOM selection, which is stale until focused
       view.dispatch(view.state.tr.setSelection(Selection.atEnd(view.state.doc)).scrollIntoView());
-      view.focus();
     },
   };
 }

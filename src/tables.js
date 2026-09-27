@@ -122,7 +122,7 @@ class TableHandles {
     };
     this.onScroll = () => this.hide();
     document.addEventListener('mousemove', this.onMouseMove);
-    view.dom.addEventListener('scroll', this.onScroll);
+    document.addEventListener('scroll', this.onScroll, true); // whichever element scrolls the page
   }
 
   follow(x, y) {
@@ -183,7 +183,7 @@ class TableHandles {
 
   destroy() {
     document.removeEventListener('mousemove', this.onMouseMove);
-    this.view.dom.removeEventListener('scroll', this.onScroll);
+    document.removeEventListener('scroll', this.onScroll, true);
     for (const button of Object.values(this.buttons)) button.remove();
   }
 }

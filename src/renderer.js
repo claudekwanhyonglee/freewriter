@@ -81,6 +81,22 @@ const textBigger = () => setTextSize(textSize + TEXT_SIZE.step);
 const textSmaller = () => setTextSize(textSize - TEXT_SIZE.step);
 const textReset = () => setTextSize(TEXT_SIZE.initial);
 
+// ponytail: fixed threshold; a mouse notch is 50–120px, trackpads send many small deltas. Tune if either feels off.
+const WHEEL_PX_PER_STEP = 50;
+
+/** Ctrl/Cmd+wheel: one text-size step per wheel notch, or per 50px of trackpad scrolling. */
+function zoomWithModifierWheel() {
+  let pending = 0;
+  document.addEventListener('wheel', (event) => {
+    if (!(isMac ? event.metaKey : event.ctrlKey)) return;
+    event.preventDefault();
+    pending += event.deltaY;
+    if (Math.abs(pending) < WHEEL_PX_PER_STEP) return;
+    setTextSize(textSize - Math.sign(pending) * TEXT_SIZE.step); // scrolling up (negative delta) enlarges
+    pending = 0;
+  }, { passive: false });
+}
+
 // --- Shortcuts and controls ---------------------------------------------------
 
 const actions = { toggleSidebar, newSession, textBigger, textSmaller, textReset, toggleFullscreen: api.toggleFullscreen };
@@ -149,6 +165,7 @@ function hideCursorWhileTyping() {
 
 setTextSize(textSize, { save: false });
 handleShortcuts();
+zoomWithModifierWheel();
 setUpControls();
 showControlsOnMouseMove();
 hideCursorWhileTyping();

@@ -203,6 +203,24 @@ test('#14 AC6: formatted text autosaves as markdown and shows in the sidebar', a
   await expect(page.locator('#sidebar .preview')).toHaveText(['Morning']);
 });
 
+test('#14 AC6: a long session opens scrolled to the end, and typing past the bottom keeps the caret in view', async () => {
+  const { app, page } = await launchWithSession(Array.from({ length: 80 }, (_, i) => `Paragraph ${i}`).join('\n\n'));
+  const caretInView = () => page.evaluate(() => {
+    const caret = getSelection().getRangeAt(0).getBoundingClientRect();
+    return caret.bottom > 0 && caret.bottom <= innerHeight;
+  });
+  await expect(editor(page).locator('p').last()).toBeInViewport();
+  expect(await caretInView()).toBe(true);
+
+  await page.keyboard.press(`${mod}+Home`);
+  await expect(editor(page).locator('p').first()).toBeInViewport();
+  await page.keyboard.press(`${mod}+End`);
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Enter');
+  await page.keyboard.type('Still visible');
+  expect(await caretInView()).toBe(true);
+  await app.close();
+});
+
 // --- AC7: no formatting UI -------------------------------------------------------------
 
 test('#14 AC7: selecting text shows no toolbar or popup', async ({ page }) => {

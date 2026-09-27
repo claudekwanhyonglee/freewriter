@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { test, expect, launch, mod, tempDir } = require('./fixture');
+const { test, expect, launch, launchWithSession, mod, tempDir } = require('./fixture');
 
 const isMac = process.platform === 'darwin';
 const shortcutLabel = (key) => (isMac ? `⌘${key}` : `Ctrl+${key}`);
@@ -204,4 +204,76 @@ test('#9 AC4: with the sidebar open, the controls stay on top and can close it',
   await button(page, 'Sessions').click({ trial: true }); // throws if the sidebar covers the button
   await button(page, 'Sessions').click();
   await expect(page.locator('#sidebar')).toBeHidden();
+});
+
+// --- #10 Ctrl+scroll zoom -------------------------------------------------------
+
+/** One notch of the mouse wheel, with Ctrl/Cmd held; negative scrolls up. */
+async function modWheel(page, notches) {
+  await page.mouse.move(400, 300);
+  await page.keyboard.down(mod);
+  for (let i = 0; i < Math.abs(notches); i++) await page.mouse.wheel(0, Math.sign(notches) * 100);
+  await page.keyboard.up(mod);
+}
+
+test('#10 AC1: Ctrl/Cmd+scroll up enlarges and down shrinks the text by the hotkey step', async ({ page }) => {
+  const initial = await fontSize(page);
+  await page.keyboard.press(`${mod}+=`);
+  const step = (await fontSize(page)) - initial;
+  await page.keyboard.press(`${mod}+0`);
+
+  await modWheel(page, -1);
+  await expect.poll(() => fontSize(page)).toBe(initial + step);
+  await modWheel(page, 2);
+  await expect.poll(() => fontSize(page)).toBe(initial - step);
+});
+
+test('#10 AC1: Ctrl/Cmd+scroll stops at the hotkey min and max', async ({ page }) => {
+  for (let i = 0; i < 40; i++) await page.keyboard.press(`${mod}+=`);
+  const max = await fontSize(page);
+  for (let i = 0; i < 40; i++) await page.keyboard.press(`${mod}+-`);
+  const min = await fontSize(page);
+
+  await modWheel(page, -40);
+  await expect.poll(() => fontSize(page)).toBe(max);
+  await modWheel(page, 40);
+  await expect.poll(() => fontSize(page)).toBe(min);
+});
+
+test('#10 AC1: small trackpad-style deltas add up to one step rather than one per event', async ({ page }) => {
+  const initial = await fontSize(page);
+  await page.mouse.move(400, 300);
+  await page.keyboard.down(mod);
+  for (let i = 0; i < 5; i++) await page.mouse.wheel(0, -4);
+  await page.keyboard.up(mod);
+  await page.waitForTimeout(200);
+  expect(await fontSize(page)).toBe(initial);
+});
+
+test('#10 AC2: a size set with Ctrl/Cmd+scroll persists across restarts', async () => {
+  const dir = tempDir('fw-');
+  const userData = tempDir('fw-');
+  const first = await launch({ dir, userData });
+  const initial = await fontSize(first.page);
+  await modWheel(first.page, -2);
+  await expect.poll(() => fontSize(first.page)).toBeGreaterThan(initial);
+  const chosen = await fontSize(first.page);
+  await first.app.close();
+
+  const second = await launch({ dir, userData });
+  expect(await fontSize(second.page)).toBe(chosen);
+  await second.app.close();
+});
+
+test('#10 AC3: scrolling without the modifier scrolls the text and keeps its size', async () => {
+  const { app, page } = await launchWithSession(Array.from({ length: 80 }, (_, i) => `Paragraph ${i}`).join('\n\n'));
+  const initial = await fontSize(page);
+  const scrollTop = () => page.evaluate(() => document.getElementById('page').scrollTop);
+  const before = await scrollTop();
+
+  await page.mouse.move(400, 300);
+  await page.mouse.wheel(0, -300);
+  await expect.poll(scrollTop).toBeLessThan(before);
+  expect(await fontSize(page)).toBe(initial);
+  await app.close();
 });
