@@ -56,6 +56,24 @@ const listItemView = $view(listItemSchema.node, () => (node, view, getPos) => {
   };
 });
 
+/** Deletes an empty checklist item below another item; the caret goes to the end of the one above. */
+function removeEmptyChecklistItem(state, dispatch) {
+  const { $from, empty } = state.selection;
+  const item = $from.node(-1);
+  const isEmptyChecklistItem = empty && $from.parent.content.size === 0 && item?.attrs.checked != null && item.childCount === 1;
+  if (!isEmptyChecklistItem || $from.index(-2) === 0) return false;
+  const tr = state.tr.delete($from.before(-1), $from.after(-1));
+  dispatch?.(tr.setSelection(Selection.near(tr.doc.resolve($from.before(-1)), -1)).scrollIntoView());
+  return true;
+}
+
+// --- Backspace --------------------------------------------------------------------
+
+/** Backspace overrides; used before the presets so these win over their Backspace bindings. */
+const backspace = $prose(() => keymap({
+  Backspace: removeEmptyChecklistItem,
+}));
+
 // --- Images -----------------------------------------------------------------------
 
 /** Images without a title: the preset rejects remark's null title and would write back `""`. */
@@ -163,6 +181,7 @@ export async function createEditor(root, { onChange, openLink, isMac }) {
     })
     .use(slashMenu) // first, so its keys win over the presets' while the menu is open
     .use(tables) // before gfm, whose Tab would otherwise stop at the last cell
+    .use(backspace)
     .use(commonmark)
     .use(untitledImages)
     .use(gfm)
