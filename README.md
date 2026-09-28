@@ -49,3 +49,7 @@ npm run dist       # build an installer for the current OS into dist/
 ```
 
 Set `FREEWRITER_DIR` to keep sessions somewhere other than `~/Documents/Freewriter`.
+
+## License
+
+[MIT](LICENSE)
