@@ -1,10 +1,11 @@
 {
   "name": "freewriter",
   "productName": "Freewriter",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A minimalist desktop app for freewriting",
   "main": "src/main.js",
   "author": "claudekwanhyonglee",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "esbuild src/renderer.js --bundle --format=esm --target=chrome120 --outfile=src/renderer.bundle.js",
