@@ -75,7 +75,7 @@ const emptyItemToParagraph = (ctx) => (state, dispatch) => {
 /** On an empty line between two lists of the same kind, removes it and joins the lists; the caret goes to the end of the one above. */
 const joinListsAroundEmptyLine = (ctx) => (state, dispatch) => {
   const { $from } = state.selection;
-  if (!caretAtBlockStart(state) || $from.parent.content.size > 0) return false;
+  if (!caretAtBlockStart(state) || $from.parent.type !== paragraphSchema.type(ctx) || $from.parent.content.size > 0) return false;
   const above = state.doc.resolve($from.before()).nodeBefore;
   const below = state.doc.resolve($from.after()).nodeAfter;
   if (above?.firstChild?.type !== listItemSchema.type(ctx) || above.type !== below?.type) return false;

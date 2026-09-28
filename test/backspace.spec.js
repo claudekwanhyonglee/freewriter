@@ -36,8 +36,8 @@ async function backspaceAt(text, line) {
 }
 
 /**
- * Opens `text`, whose empty item is written as `- EMPTY` (a truly empty task item doesn't parse as
- * one), empties that item, presses Backspace in it and types "X" where the caret lands.
+ * Opens `text`, empties the item written as `- EMPTY` the way a writer would, presses Backspace in it
+ * and types "X" where the caret lands.
  */
 async function backspaceInEmptyItem(text) {
   const session = await launchWithSession(text.replace('EMPTY', 'Z'));
