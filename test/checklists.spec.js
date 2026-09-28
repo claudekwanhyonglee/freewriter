@@ -63,7 +63,8 @@ test('#22 AC2: in an item that wraps onto several lines the box stays on the fir
   await app.close();
 });
 
-test('#22 AC3: Backspace in an empty item removes it, leaving the caret at the end of the item above', async () => {
+// Changed by #45 AC3: the empty item used to be removed with the caret going to the end of the item above.
+test('#22 AC3 (#45 AC3): Backspace in an empty item makes it a plain line in place; the items above stay put', async () => {
   const { app, page, file } = await launchWithSession('- [ ] one\n- [x] two\n- [ ] three');
   for (let i = 0; i < 'three'.length; i++) await page.keyboard.press('Backspace');
   await expect(page.locator('#editor li.task')).toHaveText(['one', 'two', '']);
@@ -71,16 +72,18 @@ test('#22 AC3: Backspace in an empty item removes it, leaving the caret at the e
 
   await page.keyboard.press('Backspace');
   await expect(page.locator('#editor li.task')).toHaveText(['one', 'two']);
+  await expect(page.locator('#editor > p')).toHaveText(['']);
   const after = await layout(page);
   expect(after).toHaveLength(4);
   after.forEach(({ top, left }, i) => {
     expect(Math.abs(top - before[i].top)).toBeLessThanOrEqual(1);
     expect(Math.abs(left - before[i].left)).toBeLessThanOrEqual(1);
   });
-  await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe('- [ ] one\n- [x] two');
 
   await page.keyboard.type('!');
-  await expect(page.locator('#editor li.task')).toHaveText(['one', 'two!']);
+  await expect(page.locator('#editor li.task')).toHaveText(['one', 'two']);
+  await expect(page.locator('#editor > p')).toHaveText(['!']);
+  await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe('- [ ] one\n- [x] two\n\n!');
   await app.close();
 });
 
