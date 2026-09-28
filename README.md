@@ -14,7 +14,15 @@ Get the latest installer from [Releases](https://github.com/claudekwanhyonglee/f
 - **macOS (Apple silicon):** the `arm64.dmg`
 - **Linux:** the `.AppImage` (make it executable with `chmod +x`, then run it)
 
-The installers aren't code-signed, so your OS warns you the first time. On Windows, click *More info* → *Run anyway*. On macOS, right-click the app → *Open* → *Open*.
+To get past the warning the first time you open it: on Windows, click *More info* → *Run anyway*; on macOS, right-click the app → *Open* → *Open*.
+
+## About this project
+
+Freewriter is a personal project built almost entirely by AI agents. I decided on the design, feel, and features, and the agents wrote the tests and code with full autonomy over the technical decisions. So treat it as you would any hobby project, not audited software.
+
+Your writing stays in plain `.md` files in a folder you can open, back up or move at any time, so you never depend on the app to get your words back.
+
+The installers aren't code-signed, so Windows and macOS will warn you the first time you open the app. The Download section above shows how to get past the warning.
 
 ## Writing
 
