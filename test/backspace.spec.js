@@ -74,6 +74,25 @@ test('#45 AC4: Backspace in an empty middle item leaves a plain line between two
   await app.close();
 });
 
+// --- #46: deleting the line between two lists joins them ------------------------------
+
+for (const { ac, kind, list, text, result } of [
+  { ac: 'AC1', kind: 'dot point lists', list: 'ul', text: '- one\n- EMPTY\n- two', result: '- oneX\n- two' },
+  { ac: 'AC2', kind: 'numbered lists', list: 'ol', text: '1. one\n2. EMPTY\n3. two', result: '1. oneX\n2. two' },
+  { ac: 'AC3', kind: 'checklists', list: 'ul', text: '- [ ] one\n- [ ] EMPTY\n- [ ] two', result: '- [ ] oneX\n- [ ] two' },
+]) {
+  test(`#46 ${ac}: Backspace on the plain line between two ${kind} joins them`, async () => {
+    const { app, page, file } = await launchWithSession(text.replace('EMPTY', 'Z'));
+    await caretBefore(page, 'Z', 1);
+    for (let i = 0; i < 3; i++) await page.keyboard.press('Backspace'); // the Z, the item, the line
+    await page.keyboard.type('X');
+    await expect(editor(page).locator('> *')).toHaveCount(1);
+    await expect(editor(page).locator(`> ${list} > li`)).toHaveText(['oneX', 'two']);
+    await expect.poll(() => fs.readFileSync(file, 'utf8')).toBe(result);
+    await app.close();
+  });
+}
+
 // --- AC1: quote lines ---------------------------------------------------------------
 
 test('#23 AC1: Backspace at the start of the last quote line makes it a normal line; the rest stays quoted', async () => {

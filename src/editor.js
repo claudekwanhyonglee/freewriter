@@ -72,6 +72,18 @@ const emptyItemToParagraph = (ctx) => (state, dispatch) => {
   return liftListItem(listItemSchema.type(ctx))(state, dispatch);
 };
 
+/** On an empty line between two lists of the same kind, removes it and joins the lists; the caret goes to the end of the one above. */
+const joinListsAroundEmptyLine = (ctx) => (state, dispatch) => {
+  const { $from } = state.selection;
+  if (!caretAtBlockStart(state) || $from.parent.content.size > 0) return false;
+  const above = state.doc.resolve($from.before()).nodeBefore;
+  const below = state.doc.resolve($from.after()).nodeAfter;
+  if (above?.firstChild?.type !== listItemSchema.type(ctx) || above.type !== below?.type) return false;
+  const tr = state.tr.delete($from.before(), $from.after()).join($from.before());
+  dispatch?.(tr.setSelection(Selection.near(tr.doc.resolve($from.before()), -1)).scrollIntoView());
+  return true;
+};
+
 /** At the start of a heading, makes it a normal line (instead of merging or dropping a level). */
 const headingToParagraph = (ctx) => (state, dispatch) => {
   const { $from } = state.selection;
@@ -93,7 +105,7 @@ const liftOutOfQuote = (ctx) => (state, dispatch) => {
 
 /** Backspace overrides; used before the presets so these win over their Backspace bindings. */
 const backspace = $prose((ctx) => keymap({
-  Backspace: chainCommands(emptyItemToParagraph(ctx), headingToParagraph(ctx), liftOutOfQuote(ctx)),
+  Backspace: chainCommands(emptyItemToParagraph(ctx), joinListsAroundEmptyLine(ctx), headingToParagraph(ctx), liftOutOfQuote(ctx)),
 }));
 
 // --- Images -----------------------------------------------------------------------
