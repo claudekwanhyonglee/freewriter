@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { test, expect, launch, launchWithSession, tempDir, setOsTheme: setTheme } = require('./fixture');
+const { test, expect, launch, launchWithSession, mod, tempDir, setOsTheme: setTheme } = require('./fixture');
 
 const rgb = (css) => css.match(/\d+/g).slice(0, 3).map(Number);
 
@@ -177,5 +177,32 @@ test('#32 AC3: typing at the end of a doc keeps the cursor line in view', async 
   });
   expect(caret.top).toBeGreaterThanOrEqual(0);
   expect(caret.bottom).toBeLessThanOrEqual(caret.height);
+  await app.close();
+});
+
+// --- #47: body text line height 1.5 -------------------------------------------------
+
+/** Each element's computed line height as a multiple of its font size. */
+const lineHeightRatios = (page, selector) => page.locator(selector).evaluateAll((els) => els.map((el) => {
+  const { lineHeight, fontSize } = getComputedStyle(el);
+  return Math.round((parseFloat(lineHeight) / parseFloat(fontSize)) * 100) / 100;
+}));
+
+/** Presses the text size hotkey until the size stops at its limit. */
+async function pressSizeKey(page, key) {
+  const fontSize = () => page.evaluate(() => getComputedStyle(document.getElementById('editor')).fontSize);
+  const before = await fontSize();
+  for (let i = 0; i < 40; i++) await page.keyboard.press(`${mod}+${key}`);
+  await expect.poll(fontSize).not.toBe(before);
+}
+
+test('#47 AC1, AC2, AC3: paragraphs are 1.5 × their size at the default, smallest and largest text sizes; headings stay 1.3', async () => {
+  const { app, page } = await launchWithSession('Para\n\n# One\n\n## Two\n\n### Three');
+  for (const size of ['default (AC1)', 'largest (AC2)', 'smallest (AC2)']) {
+    if (size.startsWith('largest')) await pressSizeKey(page, '=');
+    if (size.startsWith('smallest')) await pressSizeKey(page, '-');
+    expect(await lineHeightRatios(page, '#editor > p'), size).toEqual([1.5]);
+    expect(await lineHeightRatios(page, '#editor h1, #editor h2, #editor h3'), `${size}, AC3`).toEqual([1.3, 1.3, 1.3]);
+  }
   await app.close();
 });

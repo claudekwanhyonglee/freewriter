@@ -82,7 +82,7 @@ body:has(#controls.shown) #page {
   background: transparent;
   color: var(--text);
   caret-color: var(--text);
-  font: var(--font-size)/1.6 var(--prose-font, "Atkinson Hyperlegible"), Georgia, serif;
+  font: var(--font-size)/1.5 var(--prose-font, "Atkinson Hyperlegible"), Georgia, serif;
   /* What prosemirror-view/style/prosemirror.css asks for. */
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -113,7 +113,7 @@ body:has(#controls.shown) #page {
 #editor li.task { list-style: none; display: flex; gap: 0.5em; margin-left: -1.4em; }
 /* A 1em box, (line-height − 1em) / 2 down: centred on the first line at any size and font.
    Form controls don't inherit font-size, so their em isn't the text's until told to. */
-#editor li.task > input { font-size: inherit; width: 1em; height: 1em; margin: 0.3em 0 0; align-self: flex-start; cursor: pointer; accent-color: var(--text); }
+#editor li.task > input { font-size: inherit; width: 1em; height: 1em; margin: 0.25em 0 0; align-self: flex-start; cursor: pointer; accent-color: var(--text); }
 #editor li.task > div { flex: 1; min-width: 0; }
 #editor blockquote { margin: 0 0 0.6em; padding-left: 1em; border-left: 2px solid var(--line-strong); opacity: 0.85; }
 #editor hr { border: 0; border-top: 1px solid var(--line-strong); margin: 1.2em 0; }
